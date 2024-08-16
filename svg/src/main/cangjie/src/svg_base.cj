@@ -70,9 +70,9 @@ public class SVGBase {
             return None
         }
         var iri: String = s.getOrThrow()
-        iri = this.cssQuotedString(iri)
+        iri = cssQuotedString(iri)
         if (iri.size > 1 && iri.startsWith("#")) {
-            return (this.getElementById(iri[1..]).getOrThrow() as SvgObject).getOrThrow()
+            return (getElementById(iri[1..]).getOrThrow() as SvgObject).getOrThrow()
         }
         return None
     }
@@ -121,7 +121,7 @@ public class SVGBase {
         if (this.idToElementMap.contains(id)) {
             return this.idToElementMap.get(id)
         }
-        let result: ?SvgElementBase = this.getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
+        let result: ?SvgElementBase = getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
         if (result.isSome()) {
             this.idToElementMap.put(id, result.getOrThrow())
         }
@@ -144,7 +144,7 @@ public class SVGBase {
                     return childElem
                 }
                 if (child is SvgContainer) {
-                    let found: ?SvgElementBase = this.getElementById2((child as SvgContainer).getOrThrow(), id)
+                    let found: ?SvgElementBase = getElementById2((child as SvgContainer).getOrThrow(), id)
                     if (found.isSome()) {
                         return found
                     }
@@ -168,7 +168,7 @@ public class SVGBase {
         if (obj is SvgContainer) {
             let arr: ArrayList<SvgObject> = (obj as SvgContainer).getOrThrow().getChildren()
             for (element in arr) {
-                this.getElementsByTagName(nodeName, result, element)
+                getElementsByTagName(nodeName, result, element)
             }
         }
         return result
@@ -500,7 +500,7 @@ class SVGLength {
             }
            return (px2vp(Length(this.value * viewPortUser.getOrThrow().height / 100.0)) ?? Length(0.0)).value
         }
-        return this.floatValueX(renderer)
+        return floatValueX(renderer)
     }
 
     func getFloatValue(): Float64 {
@@ -512,7 +512,7 @@ class SVGLength {
             if (this.uni == Units.percent) {
                 return this.value * max.getOrThrow() / 100.0
             }
-            return this.floatValueX(renderer)
+            return floatValueX(renderer)
         } else {
             if (this.uni == Units.percent) {
                 let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
@@ -527,7 +527,7 @@ class SVGLength {
                 let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
                return (px2vp(Length(this.value * n / 100.0)) ?? Length(0.0)).value
             }
-            return this.floatValueX(renderer)
+            return floatValueX(renderer)
         }
     }
 
@@ -1071,8 +1071,8 @@ class PathDefinition <: PathInterface {
     }
 
     public func moveTo(x: Int64, y: Int64): Unit {
-        this.addCommand(PathDefinition.MOVETO)
-        this.coordsEnsure(2)
+        addCommand(PathDefinition.MOVETO)
+        coordsEnsure(2)
         this.coords[this.coordsLength] = x
         this.coordsLength++
         this.coords[this.coordsLength] = y
@@ -1080,7 +1080,7 @@ class PathDefinition <: PathInterface {
     }
 
     public func lineTo(x: Int64, y: Int64): Unit {
-        this.addCommand(PathDefinition.LINETO)
+        addCommand(PathDefinition.LINETO)
         this.coordsEnsure(2)
         this.coords[this.coordsLength] = x
         this.coordsLength++
@@ -1089,8 +1089,8 @@ class PathDefinition <: PathInterface {
     }
 
     public func cubicTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64, x3: Int64, y3: Int64): Unit {
-        this.addCommand(PathDefinition.CUBICTO)
-        this.coordsEnsure(6)
+        addCommand(PathDefinition.CUBICTO)
+        coordsEnsure(6)
         this.coords[this.coordsLength] = x1
         this.coordsLength++
         this.coords[this.coordsLength] = y1
@@ -1106,8 +1106,8 @@ class PathDefinition <: PathInterface {
     }
 
     public func quadTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64): Unit {
-        this.addCommand(PathDefinition.QUADTO)
-        this.coordsEnsure(4)
+        addCommand(PathDefinition.QUADTO)
+        coordsEnsure(4)
         this.coords[this.coordsLength] = x1
         this.coordsLength++
         this.coords[this.coordsLength] = y1
@@ -1129,8 +1129,8 @@ class PathDefinition <: PathInterface {
         } else {
             0
         }
-        this.addCommand(arc)
-        this.coordsEnsure(5)
+        addCommand(arc)
+        coordsEnsure(5)
         this.coords[this.coordsLength] = rx
         this.coordsLength++
         this.coords[this.coordsLength] = ry
@@ -1144,7 +1144,7 @@ class PathDefinition <: PathInterface {
     }
 
     public func close(): Unit {
-        this.addCommand(PathDefinition.CLOSE)
+        addCommand(PathDefinition.CLOSE)
     }
 
     func enumeratePath(handler: PathInterface): Unit {
