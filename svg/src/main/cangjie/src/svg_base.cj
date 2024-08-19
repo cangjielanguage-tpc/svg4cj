@@ -1,0 +1,1211 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights resvered.
+ */
+
+package svg
+
+public class SVGBase {
+    static let DEFAULT_PICTURE_WIDTH: Int64 = 512
+    static let DEFAULT_PICTURE_HEIGHT: Int64 = 512
+    static let SQRT2: Float64 = 1.414213562373095
+    static let externalFileResolverSingleton: ?SVGExternalFileResolver = None
+    static let enableInternalEntitiesSingleton: Bool = true
+    var externalFileResolver: SVGExternalFileResolver = SVGExternalFileResolver()
+    var enableInternalEntities: Bool
+    var rootElement: Svg = Svg()
+    var title: String = ""
+    var desc: String = ""
+    var renderDPI: Float64 = 96.0
+    let cssRules: RuleSet = RuleSet()
+    let idToElementMap: HashMap<String, SvgElementBase> = HashMap<String, SvgElementBase>()
+
+    public init(enableInternalEntities: Bool, fileResolver: SVGExternalFileResolver) {
+        this.enableInternalEntities = enableInternalEntities
+        this.externalFileResolver = fileResolver
+    }
+
+    public static func getFromString(svg: String): SVGBase {
+        return createParser().parseString(svg)
+    }
+
+   public static func getFromResource(media: OhosResource, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
+       let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
+       let value: Array<UInt8> = resourceManager.getMediaContent(media, 100)
+       let data = String.fromUtf8(value)
+       let svgBase = getFromString(data)
+       callback(svgBase)
+   }
+
+   public static func getFromRawfile(rawfileName: String, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
+       let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
+       let value: Array<UInt8> = resourceManager.getRawFileContent(rawfileName)
+       let data = String.fromUtf8(value)
+       let svgBase = getFromString(data)
+       callback(svgBase)
+   }
+
+    public func setRenderDPI(dpi: Float64): Unit {
+        this.renderDPI = dpi
+    }
+
+    public func getRenderDPI(): Float64 {
+        return this.renderDPI
+    }
+
+    protected static func createParser(): SVGParser {
+        return SVGParserImpl().setInternalEntitiesEnabled(enableInternalEntitiesSingleton).setExternalFileResolver(
+            externalFileResolverSingleton)
+    }
+
+    public func getRootElement(): Svg {
+        return this.rootElement
+    }
+
+    public func setRootElement(rootElement: Svg): Unit {
+        this.rootElement = rootElement
+    }
+
+    func resolveIRI(s: ?String): ?SvgObject {
+        if (s.isNone()) {
+            return None
+        }
+        var iri: String = s.getOrThrow()
+        iri = this.cssQuotedString(iri)
+        if (iri.size > 1 && iri.startsWith("#")) {
+            return (this.getElementById(iri[1..]).getOrThrow() as SvgObject).getOrThrow()
+        }
+        return None
+    }
+
+    private func cssQuotedString(s: String): String {
+        var str: String = s
+        if (str.startsWith("\"") && str.endsWith("\"")) {
+            str = str[1..(str.size - 1)].replace("\\\"", "\"")
+        } else if (str.startsWith("'") && str.endsWith("'")) {
+            str = str[1..(str.size - 1)].replace("\\'", "'")
+        }
+        return str.replace("\\\n", "").replace("\\A", "\n")
+    }
+
+    func addCSSRules(ruleset: RuleSet): Unit {
+        this.cssRules.addAll(ruleset)
+    }
+
+    func getCSSRules(): ArrayList<Rule> {
+        return this.cssRules.getRules()
+    }
+
+    func hasCSSRules(): Bool {
+        return !this.cssRules.isEmpty()
+    }
+
+    func clearRenderCSSRules(): Unit {
+        this.cssRules.removeFromSource(Source.RenderOptions)
+    }
+
+    func setTitle(title: String): Unit {
+        this.title = title
+    }
+
+    func setDesc(desc: String): Unit {
+        this.desc = desc
+    }
+
+    func getElementById(id: String): ?SvgElementBase {
+        if (id.size == 0 || id == "") {
+            return None
+        }
+        if (id == this.rootElement.id) {
+            return (this.rootElement as SvgElementBase).getOrThrow()
+        }
+        if (this.idToElementMap.contains(id)) {
+            return this.idToElementMap.get(id)
+        }
+        let result: ?SvgElementBase = this.getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
+        if (result.isSome()) {
+            this.idToElementMap.put(id, result.getOrThrow())
+        }
+        return result
+    }
+
+    private func getElementById2(obj: SvgContainer, id: String): ?SvgElementBase {
+        if (obj is SvgElementBase) {
+            let elem: SvgElementBase = (obj as SvgElementBase).getOrThrow()
+            if (id == elem.id) {
+                return elem
+            }
+            for (i in 0..obj.getChildren().size) {
+                let child = obj.getChildren()[i]
+                if (!(child is SvgElementBase)) {
+                    continue
+                }
+                let childElem: SvgElementBase = (child as SvgElementBase).getOrThrow()
+                if (id == childElem.id) {
+                    return childElem
+                }
+                if (child is SvgContainer) {
+                    let found: ?SvgElementBase = this.getElementById2((child as SvgContainer).getOrThrow(), id)
+                    if (found.isSome()) {
+                        return found
+                    }
+                }
+            }
+        }
+        return None
+    }
+
+    private func getElementsByTagName(nodeName: String, res: ArrayList<SvgObject>, o: SvgObject): ArrayList<SvgObject> {
+        var result: ArrayList<SvgObject> = res
+        var obj: SvgObject = o
+        if (result.isEmpty()) {
+            result = ArrayList<SvgObject>()
+        }
+        obj = (this.rootElement as SvgObject).getOrThrow()
+
+        if (obj.getNodeName() == nodeName) {
+            result.append(obj)
+        }
+        if (obj is SvgContainer) {
+            let arr: ArrayList<SvgObject> = (obj as SvgContainer).getOrThrow().getChildren()
+            for (element in arr) {
+                this.getElementsByTagName(nodeName, result, element)
+            }
+        }
+        return result
+    }
+}
+
+struct Units {
+    static let px: String = "px"
+    static let em: String = "em"
+    static let ex: String = "ex"
+    static let ins: String = "in"
+    static let cm: String = "cm"
+    static let mm: String = "mm"
+    static let pt: String = "pt"
+    static let pc: String = "pc"
+    static let percent: String = "percent"
+}
+
+struct GradientSpread {
+    let pad: String = "pad"
+    let reflect: String = "reflect"
+    let repeat: String = "repeat"
+}
+
+public class Box {
+    var minX: Float64
+    var minY: Float64
+    var width: Float64
+    var height: Float64
+
+    init(minX: Float64, minY: Float64, width: Float64, height: Float64) {
+        this.minX = minX
+        this.minY = minY
+        this.width = width
+        this.height = height
+    }
+
+    func copy(copy: Box): Unit {
+        this.minX = copy.minX
+        this.minY = copy.minY
+        this.width = copy.width
+        this.height = copy.height
+    }
+
+    static func fromLimits(minX: Float64, minY: Float64, maxX: Float64, maxY: Float64): Box {
+        return Box(minX, minY, maxX - minX, maxY - minY)
+    }
+
+    func toRectF(): MyRect {
+        return MyRect(this.minX, this.minY, this.maxX(), this.maxY(), Option<MyRect>.None)
+    }
+
+    func maxX(): Float64 {
+        return this.minX + this.width
+    }
+
+    func maxY(): Float64 {
+        return this.minY + this.height
+    }
+
+    func union(other: Box): Unit {
+        if (other.minX < this.minX) {
+            this.minX = other.minX
+        }
+        if (other.minY < this.minY) {
+            this.minY = other.minY
+        }
+        if (other.maxX() > this.maxX()) {
+            this.width = other.maxX() - this.minX
+        }
+        if (other.maxY() > this.maxY()) {
+            this.height = other.maxY() - this.minY
+        }
+    }
+
+    public func toString(): String {
+        return "[" + "${this.minX}" + " " + "${this.minY}" + " " + "${this.width}" + " " + "${this.height}" + "]"
+    }
+}
+
+open class SvgPaint <: ToString {
+    public open func toString(): String {
+        return ""
+    }
+}
+
+public open class Svg <: SvgViewBoxContainer {
+    var x: SVGLength = SVGLength(0.0, Option<String>.None)
+    var y: SVGLength = SVGLength(0.0, Option<String>.None)
+    var width: SVGLength = SVGLength(0.0, Option<String>.None)
+    var height: SVGLength = SVGLength(0.0, Option<String>.None)
+    public var version: String = ""
+
+    public func getNodeName(): String {
+        return "svg"
+    }
+}
+
+public open class SvgViewBoxContainer <: SvgPreserveAspectRatioContainer {
+    var viewBox: ?Box = None
+}
+
+public open class SvgPreserveAspectRatioContainer <: SvgConditionalContainer {
+    var preserveAspectRatio: ?PreserveAspectRatio = None
+}
+
+public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgConditional {
+    var children: ArrayList<SvgObject> = ArrayList<SvgObject>()
+    var requiredFeatures: HashSet<String> = HashSet<String>()
+    var requiredExtensions: String = ""
+    var systemLanguage: HashSet<String> = HashSet<String>()
+    var requiredFormats: HashSet<String> = HashSet<String>()
+    var requiredFonts: HashSet<String> = HashSet<String>()
+
+    public func getChildren(): ArrayList<SvgObject> {
+        return this.children
+    }
+
+    public open func addChild(elem: SvgObject): Unit {
+        this.children.append(elem)
+    }
+
+    public func setRequiredFeatures(features: HashSet<String>): Unit {
+        this.requiredFeatures = features
+    }
+
+    public func getRequiredFeatures(): HashSet<String> {
+        return this.requiredFeatures
+    }
+
+    public func setRequiredExtensions(extensions: String): Unit {
+        this.requiredExtensions = extensions
+    }
+
+    public func getRequiredExtensions(): String {
+        return this.requiredExtensions
+    }
+
+    public func setSystemLanguage(languages: HashSet<String>): Unit {
+        this.systemLanguage = languages
+    }
+
+    public func getSystemLanguage(): HashSet<String> {
+        return HashSet<String>()
+    }
+
+    public func setRequiredFormats(mimeTypes: HashSet<String>) {
+        this.requiredFormats = mimeTypes
+    }
+
+    public func getRequiredFormats(): HashSet<String> {
+        return this.requiredFormats
+    }
+
+    public func setRequiredFonts(fontNames: HashSet<String>) {
+        this.requiredFonts = fontNames
+    }
+
+    public func getRequiredFonts(): HashSet<String> {
+        return this.requiredFonts
+    }
+}
+
+public open class SvgObject <: ToString {
+    let document: ?SVGBase = None
+    let parent: ?SvgContainer = None
+    public let types: String = ""
+
+    public open func getNodeName(): String {
+        return ""
+    }
+
+    public open func toString(): String {
+        return types
+    }
+}
+
+public interface SvgContainer {
+    func getChildren(): ArrayList<SvgObject>
+
+    func addChild(elem: SvgObject): Unit
+}
+
+public open class SvgElementBase <: SvgObject {
+    var id: String = ""
+    var spacePreserve: Bool = false
+    var baseStyle: ?Style = None
+    var style: ?Style = None
+    var classNames: ArrayList<String> = ArrayList<String>()
+
+    public func toString(): String {
+        return this.getNodeName()
+    }
+
+    operator func ==(that: SvgElementBase): Bool {
+        return refEq(this, that)
+    }
+}
+
+public open class SvgElement <: SvgElementBase {
+    public var boundingBox: ?Box = None
+}
+
+public interface SvgConditional {
+    func setRequiredFeatures(features: HashSet<String>): Unit
+
+    func getRequiredFeatures(): HashSet<String>
+
+    func setRequiredExtensions(extensions: String): Unit
+
+    func getRequiredExtensions(): String
+
+    func setSystemLanguage(languages: HashSet<String>): Unit
+
+    func getSystemLanguage(): HashSet<String>
+
+    func setRequiredFormats(mimeTypes: HashSet<String>): Unit
+
+    func getRequiredFormats(): HashSet<String>
+
+    func setRequiredFonts(fontNames: HashSet<String>): Unit
+
+    func getRequiredFonts(): HashSet<String>
+}
+
+class Colour <: SvgPaint {
+    var colour: String
+    static let BLACK: Colour = Colour("#000000")
+    static let TRANSPARENT: Colour = Colour("#ffffffff")
+
+    init(val: String) {
+        super()
+        this.colour = val
+    }
+
+    public func toString(): String {
+        return "#%08x ${this.colour}"
+    }
+}
+
+class CurrentColor <: SvgPaint {
+    private static let instance: CurrentColor = CurrentColor()
+
+    init() {
+        super()
+    }
+
+    static func getInstance(): CurrentColor {
+        return instance
+    }
+}
+
+class PaintReference <: SvgPaint {
+    var href: String
+    var fallback: SvgPaint
+
+    init(href: String, fallback: SvgPaint) {
+        super()
+        this.href = href
+        this.fallback = fallback
+    }
+
+    public func toString(): String {
+        return this.href + " " + "${this.fallback}"
+    }
+}
+
+class SVGLength {
+    var value: Float64
+    var uni: String
+    static let ZERO: SVGLength = SVGLength(0.0, "")
+
+    init(value: Float64, uni: ?String) {
+        var u: ?String = uni
+        this.value = value
+        if (u.isNone()) {
+            u = Units.px
+        }
+        this.uni = u.getOrThrow()
+    }
+
+    func floatValueBox(renderer: SVGRenderer): Float64 {
+        match (this.uni) {
+            case "em" => return this.value * renderer.getCurrentFontSize()
+            case "ex" => return this.value * renderer.getCurrentFontXHeight()
+            case "in" => return this.value * renderer.getDPI()
+            case "cm" => return this.value * renderer.getDPI() / 2.54
+            case "mm" => return this.value * renderer.getDPI() / 25.4
+            case "pt" => return this.value * renderer.getDPI() / 72.0
+            case "pc" => return this.value * renderer.getDPI() / 6.0
+            case "percent" =>
+                let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
+                if (viewPortUser.isNone()) {
+                    return this.value
+                } else {
+                    return this.value * viewPortUser.getOrThrow().width / 100.0
+                }
+            case "px" => return this.value
+            case _ => return this.value
+        }
+    }
+
+    func floatValueX(renderer: SVGRenderer): Float64 {
+        match (this.uni) {
+            case "em" => return this.value * renderer.getCurrentFontSize()
+            case "ex" => return this.value * renderer.getCurrentFontXHeight()
+           case "in" => return (px2vp(Length(this.value * renderer.getDPI())) ?? Length(0.0)).value
+           case "cm" => return (px2vp(Length(this.value * renderer.getDPI() / 2.54)) ?? Length(0.0)).value
+           case "mm" => return (px2vp(Length(this.value * renderer.getDPI() / 25.4)) ?? Length(0.0)).value
+           case "pt" => return (px2vp(Length(this.value * renderer.getDPI() / 72.0)) ?? Length(0.0)).value
+           case "pc" => return (px2vp(Length(this.value * renderer.getDPI() / 6.0)) ?? Length(0.0)).value
+           case "percent" =>
+               let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
+               if (viewPortUser.isNone()) {
+                   return (px2vp(Length(this.value)) ?? Length(0.0)).value
+               } else {
+                   return (px2vp(Length(this.value * viewPortUser.getOrThrow().width / 100.0)) ?? Length(0.0)).value
+               }
+            case "px" => return this.value
+           case _ => return (px2vp(Length(this.value)) ?? Length(0.0)).value
+        }
+    }
+
+    func floatValueY(renderer: SVGRenderer): Float64 {
+        if (this.uni == Units.percent) {
+            let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
+            if (viewPortUser.isNone()) {
+               return (px2vp(Length(this.value)) ?? Length(0.0)).value
+            }
+           return (px2vp(Length(this.value * viewPortUser.getOrThrow().height / 100.0)) ?? Length(0.0)).value
+        }
+        return this.floatValueX(renderer)
+    }
+
+    func getFloatValue(): Float64 {
+        return this.value
+    }
+
+    func floatValue(renderer: SVGRenderer, max: ?Float64): Float64 {
+        if (max.isSome()) {
+            if (this.uni == Units.percent) {
+                return this.value * max.getOrThrow() / 100.0
+            }
+            return this.floatValueX(renderer)
+        } else {
+            if (this.uni == Units.percent) {
+                let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
+                if (viewPortUser.isNone()) {
+                    return this.value
+                }
+                let w: Float64 = viewPortUser.getOrThrow().width
+                let h: Float64 = viewPortUser.getOrThrow().height
+                if (w == h) {
+                    return this.value * w / 100.0
+                }
+                let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
+               return (px2vp(Length(this.value * n / 100.0)) ?? Length(0.0)).value
+            }
+            return this.floatValueX(renderer)
+        }
+    }
+
+    func floatValueWithDpi(dpi: Float64): Float64 {
+        match (this.uni) {
+            case "in" => return this.value * dpi
+            case "cm" => return this.value * dpi / 2.54
+            case "mm" => return this.value * dpi / 25.4
+            case "pt" => return this.value * dpi / 72.0
+            case "pc" => return this.value * dpi / 6.0
+            case "px" => return this.value
+            case "em" => return this.value
+            case "ex" => return this.value
+            case "percent" => return this.value
+            case _ => return this.value
+        }
+    }
+
+    func isZero(): Bool {
+        return this.value == 0.0
+    }
+
+    func isNegative(): Bool {
+        return this.value < 0.0
+    }
+
+    public func toString(): String {
+        return "${this.value}" + this.uni.toString()
+    }
+}
+
+class CSSClipRect {
+    var top: SVGLength
+    var right: SVGLength
+    var bottom: SVGLength
+    var left: SVGLength
+
+    init(top: SVGLength, right: SVGLength, bottom: SVGLength, left: SVGLength) {
+        this.top = top
+        this.right = right
+        this.bottom = bottom
+        this.left = left
+    }
+}
+
+open class SvgConditionalElement <: SvgElement & SvgConditional {
+    var requiredFeatures: HashSet<String> = HashSet<String>()
+    var requiredExtensions: String = ""
+    var systemLanguage: HashSet<String> = HashSet<String>()
+    var requiredFormats: HashSet<String> = HashSet<String>()
+    var requiredFonts: HashSet<String> = HashSet<String>()
+
+    public func setRequiredFeatures(features: HashSet<String>): Unit {
+        this.requiredFeatures = features
+    }
+
+    public func getRequiredFeatures(): HashSet<String> {
+        return this.requiredFeatures
+    }
+
+    public func setRequiredExtensions(extensions: String): Unit {
+        this.requiredExtensions = extensions
+    }
+
+    public func getRequiredExtensions(): String {
+        return this.requiredExtensions
+    }
+
+    public func setSystemLanguage(languages: HashSet<String>): Unit {
+        this.systemLanguage = languages
+    }
+
+    public func getSystemLanguage(): HashSet<String> {
+        return this.systemLanguage
+    }
+
+    public func setRequiredFormats(mimeTypes: HashSet<String>): Unit {
+        this.requiredFormats = mimeTypes
+    }
+
+    public func getRequiredFormats(): HashSet<String> {
+        return this.requiredFormats
+    }
+
+    public func setRequiredFonts(fontNames: HashSet<String>): Unit {
+        this.requiredFonts = fontNames
+    }
+
+    public func getRequiredFonts(): HashSet<String> {
+        return this.requiredFonts
+    }
+}
+
+interface HasTransform {
+    func setTransform(matrix: Matrix2D2): Unit
+}
+
+open class Group <: SvgConditionalContainer & HasTransform {
+    var transform: Matrix2D2 = Matrix2D2()
+
+    public func setTransform(transform: Matrix2D2): Unit {
+        this.transform = transform
+    }
+
+    public open func getNodeName(): String {
+        return "group"
+    }
+}
+
+interface NotDirectlyRendered {}
+
+class Defs <: Group & NotDirectlyRendered {
+    public func getNodeName(): String {
+        return "defs"
+    }
+}
+
+open class GraphicsElement <: SvgConditionalElement & HasTransform {
+    var transform: Matrix2D2 = Matrix2D2()
+
+    public func setTransform(transform: Matrix2D2): Unit {
+        this.transform = transform
+    }
+}
+
+class A <: Group {
+    var href: String = ""
+
+    public func getNodeName(): String {
+        return "a"
+    }
+}
+
+class Use <: Group {
+    let href: String = ""
+    let x: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y: SVGLength = SVGLength(0.0, Option<String>.None)
+    let width: SVGLength = SVGLength(0.0, Option<String>.None)
+    let heightSVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "use"
+    }
+}
+
+class Path2 <: GraphicsElement {
+    var d: PathDefinition = PathDefinition()
+    var pathLength: Float64 = 0.0
+
+    public func getNodeName(): String {
+        return "path"
+    }
+}
+
+class Rect2 <: GraphicsElement {
+    var x: SVGLength = SVGLength(0.0, Option<String>.None)
+    var y: SVGLength = SVGLength(0.0, Option<String>.None)
+    var width: SVGLength = SVGLength(0.0, Option<String>.None)
+    var height: SVGLength = SVGLength(0.0, Option<String>.None)
+    var rx: SVGLength = SVGLength(0.0, Option<String>.None)
+    var ry: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "rect"
+    }
+}
+
+class Circle2 <: GraphicsElement {
+    var cx: SVGLength = SVGLength(0.0, Option<String>.None)
+    var cy: SVGLength = SVGLength(0.0, Option<String>.None)
+    var r: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "circle"
+    }
+}
+
+class Ellipse2 <: GraphicsElement {
+    var cx: SVGLength = SVGLength(0.0, Option<String>.None)
+    var cy: SVGLength = SVGLength(0.0, Option<String>.None)
+    var rx: SVGLength = SVGLength(0.0, Option<String>.None)
+    var ry: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "ellipse"
+    }
+}
+
+class Line2 <: GraphicsElement {
+    var x1: SVGLength = SVGLength(0.0, Option<String>.None)
+    var y1: SVGLength = SVGLength(0.0, Option<String>.None)
+    var x2: SVGLength = SVGLength(0.0, Option<String>.None)
+    var y2: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "line"
+    }
+}
+
+open class PolyLine <: GraphicsElement {
+    var points: ArrayList<Float64> = ArrayList<Float64>()
+
+    public open func getNodeName(): String {
+        return "polyline"
+    }
+}
+
+class Polygon2 <: PolyLine {
+    public func getNodeName(): String {
+        return "polygon"
+    }
+}
+
+interface TextRoot {}
+
+interface TextChild {
+    func setTextRoot(obj: TextRoot): Unit
+
+    func getTextRoot(): TextRoot
+}
+
+open class TextContainer <: SvgConditionalContainer {
+    public func addChild(elem: SvgObject): Unit {
+        try {
+            this.children.append(elem)
+        } catch (e: Exception) {
+        }
+    }
+}
+
+open class TextPositionedContainer <: TextContainer {
+    let x: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    let y: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    let dx: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    let dy: ArrayList<SVGLength> = ArrayList<SVGLength>()
+}
+
+class Text2 <: TextPositionedContainer & TextRoot & HasTransform {
+    var transform: Matrix2D2 = Matrix2D2()
+    var text: String = ""
+
+    public func setTransform(transform: Matrix2D2): Unit {
+        this.transform = transform
+    }
+
+    public func getNodeName(): String {
+        return "text"
+    }
+}
+
+class TSpan <: TextPositionedContainer & TextChild {
+    private var textRoot: TextRoot = Text2()
+    let text: String = ""
+
+    public func setTextRoot(obj: TextRoot) {
+        this.textRoot = obj
+    }
+
+    public func getTextRoot(): TextRoot {
+        return this.textRoot
+    }
+
+    public func getNodeName(): String {
+        return "tspan"
+    }
+}
+
+class TextSequence <: SvgObject & TextChild {
+    var text: String
+    private var textRoot: TextRoot = Text2()
+
+    init(text: String) {
+        super()
+        this.text = text
+    }
+
+    public func toString(): String {
+        return "TextChild: '" + this.text + "'"
+    }
+
+    public func setTextRoot(obj: TextRoot): Unit {
+        this.textRoot = obj
+    }
+
+    public func getTextRoot(): TextRoot {
+        return this.textRoot
+    }
+}
+
+class TRef <: TextContainer & TextChild {
+    let href: String = ""
+    private var textRoot: TextRoot = Text2()
+
+    public func setTextRoot(obj: TextRoot): Unit {
+        this.textRoot = obj
+    }
+
+    public func getTextRoot(): TextRoot {
+        return this.textRoot
+    }
+
+    public func getNodeName(): String {
+        return "tref"
+    }
+}
+
+class TextPath <: TextContainer & TextChild {
+    let href: String = ""
+    let startOffset: SVGLength = SVGLength(0.0, Option<String>.None)
+    private var textRoot: TextRoot = Text2()
+
+    public func setTextRoot(obj: TextRoot): Unit {
+        this.textRoot = obj
+    }
+
+    public func getTextRoot(): TextRoot {
+        return this.textRoot
+    }
+
+    public func getNodeName(): String {
+        return "textPath"
+    }
+}
+
+class Switch <: Group {
+    public func getNodeName(): String {
+        return "switch"
+    }
+}
+
+class Symbol <: SvgViewBoxContainer & NotDirectlyRendered {
+    public func getNodeName(): String {
+        return "symbol"
+    }
+}
+
+class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
+    var markerUnitsAreUser: Bool = false
+    var refX: SVGLength = SVGLength(0.0, Option<String>.None)
+    var refY: SVGLength = SVGLength(0.0, Option<String>.None)
+    var markerWidth: SVGLength = SVGLength(0.0, Option<String>.None)
+    var markerHeight: SVGLength = SVGLength(0.0, Option<String>.None)
+    var orient: Float64 = 0.0
+
+    public func getNodeName(): String {
+        return "marker"
+    }
+}
+
+open class GradientElement <: SvgElementBase & SvgContainer {
+    let children: ArrayList<SvgObject> = ArrayList<SvgObject>()
+    let gradientUnitsAreUser: Bool = false
+    let gradientTransform: Matrix2D2 = Matrix2D2()
+    let spreadMethod: GradientSpread = GradientSpread()
+    let href: String = ""
+
+    public func getChildren(): ArrayList<SvgObject> {
+        return this.children
+    }
+
+    public func addChild(elem: SvgObject): Unit {
+        if (elem is Stop) {
+            this.children.append(elem)
+        } else {
+            throw SVGParseException("Gradient elements cannot contain " + "${elem}" + " elements.")
+        }
+    }
+}
+
+class Stop <: SvgElementBase & SvgContainer {
+    let offset: Int64 = 0
+
+    public func getChildren(): ArrayList<SvgObject> {
+        return ArrayList<SvgObject>()
+    }
+
+    public func addChild(elem: SvgObject): Unit {
+    }
+
+    public func getNodeName(): String {
+        return "stop"
+    }
+}
+
+class SvgLinearGradient <: GradientElement {
+    let x1: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y1: SVGLength = SVGLength(0.0, Option<String>.None)
+    let x2: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y2: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "linearGradient"
+    }
+}
+
+class SvgRadialGradient <: GradientElement {
+    let cx: SVGLength = SVGLength(0.0, Option<String>.None)
+    let cy: SVGLength = SVGLength(0.0, Option<String>.None)
+    let r: SVGLength = SVGLength(0.0, Option<String>.None)
+    let fx: SVGLength = SVGLength(0.0, Option<String>.None)
+    let fy: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "radialGradient"
+    }
+}
+
+class ClipPath <: Group & NotDirectlyRendered {
+    let clipPathUnitsAreUser: Bool = false
+
+    public func getNodeName(): String {
+        return "clipPath"
+    }
+}
+
+class Pattern <: SvgViewBoxContainer & NotDirectlyRendered {
+    let patternUnitsAreUser: Bool = false
+    let patternContentUnitsAreUser: Bool = false
+    let patternTransform: Matrix2D2 = Matrix2D2()
+    let x: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y: SVGLength = SVGLength(0.0, Option<String>.None)
+    let width: SVGLength = SVGLength(0.0, Option<String>.None)
+    let height: SVGLength = SVGLength(0.0, Option<String>.None)
+    let href: String = ""
+
+    public func getNodeName(): String {
+        return "pattern"
+    }
+}
+
+class Image2 <: SvgPreserveAspectRatioContainer & HasTransform {
+    let href: String = ""
+    let x: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y: SVGLength = SVGLength(0.0, Option<String>.None)
+    let width: SVGLength = SVGLength(0.0, Option<String>.None)
+    let height: SVGLength = SVGLength(0.0, Option<String>.None)
+    var transform: Matrix2D2 = Matrix2D2()
+    let translateX: SVGLength = SVGLength(0.0, Option<String>.None)
+    let translateY: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func setTransform(transform: Matrix2D2): Unit {
+        this.transform = transform
+    }
+
+    public func getNodeName(): String {
+        return "image"
+    }
+}
+
+class View <: SvgViewBoxContainer & NotDirectlyRendered {
+    static let NODE_NAME: String = "view"
+
+    public func getNodeName(): String {
+        return View.NODE_NAME
+    }
+}
+
+class Mask <: SvgConditionalContainer & NotDirectlyRendered {
+    let maskUnitsAreUser: Bool = false
+    let boolean: Bool = false
+    let maskContentUnitsAreUser: Bool = false
+    let x: SVGLength = SVGLength(0.0, Option<String>.None)
+    let y: SVGLength = SVGLength(0.0, Option<String>.None)
+    let width: SVGLength = SVGLength(0.0, Option<String>.None)
+    let height: SVGLength = SVGLength(0.0, Option<String>.None)
+
+    public func getNodeName(): String {
+        return "mask"
+    }
+}
+
+class SolidColor <: SvgElementBase & SvgContainer {
+    public func getChildren(): ArrayList<SvgObject> {
+        return ArrayList<SvgObject>()
+    }
+
+    public func addChild(elem: SvgObject): Unit {
+    }
+
+    public func getNodeName(): String {
+        return "solidColor"
+    }
+}
+
+interface PathInterface {
+    func moveTo(x: Int64, y: Int64): Unit
+
+    func lineTo(x: Int64, y: Int64): Unit
+
+    func cubicTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64, x3: Int64, y3: Int64): Unit
+
+    func quadTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64): Unit
+
+    func arcTo(rx: Int64, ry: Int64, xAxisRotation: Int64, largeArcFlag: Bool, sweepFlag: Bool, x: Int64, y: Int64): Unit
+
+    func close(): Unit
+}
+
+class PathDefinition <: PathInterface {
+    private var commands: Array<Int64>
+    private var commandsLength: Int64 = 0
+    private var coords: Array<Int64>
+    private var coordsLength: Int64 = 0
+    private static let MOVETO: Int64 = 0
+    private static let LINETO: Int64 = 1
+    private static let CUBICTO: Int64 = 2
+    private static let QUADTO: Int64 = 3
+    private static let ARCTO: Int64 = 4
+    private static let CLOSE: Int64 = 8
+    var d: String = ""
+
+    init() {
+        this.commands = Array<Int64>(8, item: 0)
+        this.coords = Array<Int64>(16, item: 0)
+    }
+
+    func isEmpty(): Bool {
+        return this.commandsLength == 0
+    }
+
+    private func addCommand(value: Int64): Unit {
+        if (this.commandsLength == this.commands.size) {
+            let newCommands: Array<Int64> = Array<Int64>(this.commands.size * 2, item: 0)
+            for (i in 0..this.commands.size) {
+                newCommands[i] = this.commands[i]
+            }
+            this.commands = newCommands
+        }
+        this.commands[this.commandsLength] = value
+        this.commandsLength++
+    }
+
+    private func coordsEnsure(num: Int64): Unit {
+        if (this.coords.size < (this.coordsLength + num)) {
+            let newCoords: Array<Int64> = Array<Int64>(this.coords.size * 2, item: 0)
+            for (i in 0..this.coords.size) {
+                newCoords[i] = this.coords[i]
+            }
+            this.coords = newCoords
+        }
+    }
+
+    public func moveTo(x: Int64, y: Int64): Unit {
+        this.addCommand(PathDefinition.MOVETO)
+        this.coordsEnsure(2)
+        this.coords[this.coordsLength] = x
+        this.coordsLength++
+        this.coords[this.coordsLength] = y
+        this.coordsLength++
+    }
+
+    public func lineTo(x: Int64, y: Int64): Unit {
+        this.addCommand(PathDefinition.LINETO)
+        this.coordsEnsure(2)
+        this.coords[this.coordsLength] = x
+        this.coordsLength++
+        this.coords[this.coordsLength] = y
+        this.coordsLength++
+    }
+
+    public func cubicTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64, x3: Int64, y3: Int64): Unit {
+        this.addCommand(PathDefinition.CUBICTO)
+        this.coordsEnsure(6)
+        this.coords[this.coordsLength] = x1
+        this.coordsLength++
+        this.coords[this.coordsLength] = y1
+        this.coordsLength++
+        this.coords[this.coordsLength] = x2
+        this.coordsLength++
+        this.coords[this.coordsLength] = y2
+        this.coordsLength++
+        this.coords[this.coordsLength] = x3
+        this.coordsLength++
+        this.coords[this.coordsLength] = y3
+        this.coordsLength++
+    }
+
+    public func quadTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64): Unit {
+        this.addCommand(PathDefinition.QUADTO)
+        this.coordsEnsure(4)
+        this.coords[this.coordsLength] = x1
+        this.coordsLength++
+        this.coords[this.coordsLength] = y1
+        this.coordsLength++
+        this.coords[this.coordsLength] = x2
+        this.coordsLength++
+        this.coords[this.coordsLength] = y2
+        this.coordsLength++
+    }
+
+    public func arcTo(rx: Int64, ry: Int64, xAxisRotation: Int64, largeArcFlag: Bool, sweepFlag: Bool, x: Int64,
+        y: Int64): Unit {
+        let arc: Int64 = PathDefinition.ARCTO | if (largeArcFlag) {
+            2
+        } else {
+            0
+        } | if (sweepFlag) {
+            1
+        } else {
+            0
+        }
+        this.addCommand(arc)
+        this.coordsEnsure(5)
+        this.coords[this.coordsLength] = rx
+        this.coordsLength++
+        this.coords[this.coordsLength] = ry
+        this.coordsLength++
+        this.coords[this.coordsLength] = xAxisRotation
+        this.coordsLength++
+        this.coords[this.coordsLength] = x
+        this.coordsLength++
+        this.coords[this.coordsLength] = y
+        this.coordsLength++
+    }
+
+    public func close(): Unit {
+        this.addCommand(PathDefinition.CLOSE)
+    }
+
+    func enumeratePath(handler: PathInterface): Unit {
+        var coordsPos: Int64 = 0
+        for (i in 0..this.commandsLength) {
+            let command: Int64 = this.commands[i]
+            match (command) {
+                case 0 =>
+                    let opt1 = coordsPos
+                    coordsPos++
+                    let opt2 = coordsPos
+                    coordsPos++
+                    handler.moveTo(this.coords[opt1], this.coords[opt2])
+                case 1 =>
+                    let opt1 = coordsPos
+                    coordsPos++
+                    let opt2 = coordsPos
+                    coordsPos++
+                    handler.lineTo(this.coords[opt1], this.coords[opt2])
+                case 2 =>
+                    let opt1 = coordsPos
+                    coordsPos++
+                    let opt2 = coordsPos
+                    coordsPos++
+                    let opt3 = coordsPos
+                    coordsPos++
+                    let opt4 = coordsPos
+                    coordsPos++
+                    let opt5 = coordsPos
+                    coordsPos++
+                    let opt6 = coordsPos
+                    coordsPos++
+                    handler.cubicTo(this.coords[opt1], this.coords[opt2], this.coords[opt3], this.coords[opt4],
+                        this.coords[opt5], this.coords[opt6])
+                case 3 =>
+                    let opt1 = coordsPos
+                    coordsPos++
+                    let opt2 = coordsPos
+                    coordsPos++
+                    let opt3 = coordsPos
+                    coordsPos++
+                    let opt4 = coordsPos
+                    coordsPos++
+                    handler.quadTo(this.coords[opt1], this.coords[opt2], this.coords[opt3], this.coords[opt4])
+                case 8 => handler.close()
+                case _ =>
+                    let largeArcFlag: Bool = (command & 2) != 0
+                    let sweepFlag: Bool = (command & 1) != 0
+                    let opt1 = coordsPos
+                    coordsPos++
+                    let opt2 = coordsPos
+                    coordsPos++
+                    let opt3 = coordsPos
+                    coordsPos++
+                    let opt4 = coordsPos
+                    coordsPos++
+                    let opt5 = coordsPos
+                    coordsPos++
+                    handler.arcTo(this.coords[opt1], this.coords[opt2], this.coords[opt3], largeArcFlag, sweepFlag,
+                        this.coords[opt4], this.coords[opt5])
+            }
+        }
+    }
+}
