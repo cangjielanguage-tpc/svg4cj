@@ -119,9 +119,27 @@ class Selector {
     }
 }
 
-
 class SimpleSelector {
+    var combinator: Combinator
+    var tag: String
+    let attribs: ArrayList<Attrib> = ArrayList<Attrib>()
+    let pseudos: ArrayList<PseudoClass> = ArrayList<PseudoClass>()
 
+    init(combinator: ?Combinator, tag: String) {
+        if (combinator.isSome()) {
+            this.combinator = combinator.getOrThrow()
+        }
+        this.combinator = Combinator.DESCENDANT
+        this.tag = tag
+    }
+
+    func addAttrib(attrName: String, op: AttribOp, attrValue: String): Unit {
+        this.attribs.append(Attrib(attrName, op, attrValue))
+    }
+
+    func addPseudo(pseudo: PseudoClass): Unit {
+        this.pseudos.append(pseudo)
+    }
 }
 
 enum Source {
@@ -133,6 +151,230 @@ enum Source {
             case (Document, Document) => true
             case (RenderOptions, RenderOptions) => true
             case _ => false
+        }
+    }
+}
+
+enum Combinator {
+    | DESCENDANT
+    | CHILD
+    | FOLLOWS
+
+    public operator func ==(that: Combinator): Bool {
+        match ((this, that)) {
+            case (DESCENDANT, DESCENDANT) => true
+            case (CHILD, CHILD) => true
+            case (FOLLOWS, FOLLOWS) => true
+            case _ => false
+        }
+    }
+}
+
+class Attrib {
+    public var name: String
+    var operation: AttribOp
+    public var value: String
+
+    init(name: String, op: AttribOp, value: String) {
+        this.name = name
+        this.operation = op
+        this.value = value
+    }
+}
+
+enum AttribOp {
+    | EXISTS
+    | EQUALS
+    | INCLUDES
+    | DASHMATCH
+
+    public operator func ==(that: AttribOp): Bool {
+        match ((this, that)) {
+            case (EXISTS, EXISTS) => true
+            case (EQUALS, EQUALS) => true
+            case (INCLUDES, INCLUDES) => true
+            case (DASHMATCH, DASHMATCH) => true
+            case _ => false
+        }
+    }
+}
+
+interface PseudoClass {
+    func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool
+}
+
+class PseudoClassNot <: PseudoClass {
+    private let selectorGroup: ArrayList<Selector>
+
+    init(selectorGroup: ArrayList<Selector>) {
+        this.selectorGroup = selectorGroup
+    }
+
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        return true
+    }
+
+    func getSpecificity(): Int64 {
+        var highest: Int64 = Int64.Min
+        for (i in 0..this.selectorGroup.size) {
+            if (this.selectorGroup[i].specificity > highest) {
+                highest = this.selectorGroup[i].specificity
+            }
+        }
+        return highest
+    }
+}
+
+class PseudoClassTarget <: PseudoClass {
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        return obj == ruleMatchContext.targetElement
+    }
+}
+
+class PseudoClassNotSupported <: PseudoClass {
+    private var clazz: String
+
+    init(clazz: String) {
+        this.clazz = clazz
+    }
+
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        return false
+    }
+}
+
+class PseudoClassAnPlusB <: PseudoClass {
+    private var a: Int64
+    private var b: Int64
+    private var isFromStart: Bool
+    private var isOfType: Bool
+    private var nodeName: String
+
+    init(a: Int64, b: Int64, isFromStart: Bool, isOfType: Bool, nodeName: String) {
+        this.a = a
+        this.b = b
+        this.isFromStart = isFromStart
+        this.isOfType = isOfType
+        this.nodeName = nodeName
+    }
+
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        var nodeNameToCheck: String = if (this.isOfType && this.nodeName == "") {
+            obj.getNodeName()
+        } else {
+            this.nodeName
+        }
+        var childPos: Int64 = 0
+        var childCount: Int64 = 1
+        if (obj.parent.isSome()) {
+            childCount = 0
+            for (child in obj.parent.getOrThrow().getChildren()) {
+                if ((child as SvgElementBase).getOrThrow() == obj) {
+                    childPos = childCount
+                }
+                if (nodeNameToCheck == "" || child.getNodeName() == nodeNameToCheck) {
+                    childCount++
+                }
+            }
+        }
+        childPos = if (this.isFromStart) {
+            childPos + 1
+        } else {
+            childCount - childPos
+        }
+        if (this.a == 0) {
+            return childPos == this.b
+        }
+        let condition1: Bool = ((childPos - this.b) % this.a) == 0
+        let condition2a: Bool = childPos - this.b == 0
+        var result1: Int64 = if (childPos - this.b > 0) {
+            1
+        } else {
+            -1
+        }
+        var result2: Int64 = if (this.a > 0) {
+            1
+        } else {
+            -1
+        }
+        let condition2b: Bool = result1 == result2
+        let condition2: Bool = condition2a || condition2b
+        return condition1 && condition2
+    }
+}
+
+class RuleMatchContext {
+    var targetElement: SvgElementBase = SvgElementBase()
+}
+
+class PseudoClassIdents {
+    static let target: String = "target"
+    static let root: String = "root"
+    static let nth_child: String = "nth_child"
+    static let nth_last_child: String = "nth_last_child"
+    static let nth_of_type: String = "nth_of_type"
+    static let nth_last_of_type: String = "nth_last_of_type"
+    static let first_child: String = "first_child"
+    static let last_child: String = "last_child"
+    static let first_of_type: String = "first_of_type"
+    static let last_of_type: String = "last_of_type"
+    static let only_child: String = "only_child"
+    static let only_of_type: String = "only_of_type"
+    static let empty: String = "empty"
+    static let not: String = "not"
+    static let link: String = "link"
+    static let visited: String = "visited"
+    static let hover: String = "hover"
+    static let active: String = "active"
+    static let focus: String = "focus"
+    static let enabled: String = "enabled"
+    static let disabled: String = "disabled"
+    static let checked: String = "checked"
+    static let indeterminate: String = "indeterminate"
+    static let lang: String = "lang"
+}
+
+class PseudoClassOnlyChild <: PseudoClass {
+    private var isOfType: Bool
+    private var nodeName: String
+
+    public init(isOfType: Bool, nodeName: String) {
+        this.isOfType = isOfType
+        this.nodeName = nodeName
+    }
+
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        let nodeNameToCheck: String = if (this.isOfType && this.nodeName == "") {
+            obj.getNodeName()
+        } else {
+            this.nodeName
+        }
+        var childCount: Int64 = 1
+        if (obj.parent.isSome()) {
+            childCount = 0
+            for (child in obj.parent.getOrThrow().getChildren()) {
+                if (nodeNameToCheck == "" || child.getNodeName() == nodeNameToCheck) {
+                    childCount++
+                }
+            }
+        }
+        return (childCount == 1)
+    }
+}
+
+class PseudoClassRoot <: PseudoClass {
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        return obj.parent.isNone()
+    }
+}
+
+class PseudoClassEmpty <: PseudoClass {
+    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+        // @ts-ignore
+        if (obj is SvgContainer) {
+            return (obj as SvgContainer).getOrThrow().getChildren().size == 0
+        } else {
+            return true
         }
     }
 }
