@@ -22,7 +22,7 @@ class SetFromStringSample {
 
     public func getData(): SVGImageViewModel {
         let resourceManager = ResourceManager.getResourceManager(getStageContext(globalAbilityContext.getOrThrow()))
-        let value: Array<UInt8> = resourceManager.getRawFileContent("ic_launcher_round.svg")
+        let value: Array<UInt8> = resourceManager.getRawFileContent("circle.svg")
         let data = String.fromUtf8(value)
         this.model.setFromString(data, globalAbilityContext)
         return this.model

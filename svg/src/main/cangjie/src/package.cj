@@ -28,6 +28,7 @@ internal import ohos.ability.*
 internal import ohos.hilog.*
 internal import ohos.prompt_action.*
 internal import xml_ffi.*
+internal import std.format.*
 
 extend<T> Option<T> {
     operator func ()(): T {

@@ -49,10 +49,10 @@ public class Style {
 
     var mask: String = ""
 
-    var solidColor: SvgPaint = SvgPaint()
+    var solidColor: ?SvgPaint = None
     var solidOpacity: Float64 = 0.0
 
-    var viewportFill: SvgPaint = SvgPaint()
+    var viewportFill: ?SvgPaint = None
     var viewportFillOpacity: Float64 = 0.0
 
     var vectorEffect: String = ""

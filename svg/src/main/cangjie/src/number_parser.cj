@@ -60,7 +60,7 @@ class NumberParser {
                 if (significand > TOO_BIG_L) {
                     return Float64.NaN
                 }
-                significand = significand * 10.0 + (Float64(byte))
+                significand = significand * 10.0 + (Float64(byte) - Float64(b'0'))
                 numDigits++
                 if (significand < 0.0) {
                     return Float64.NaN

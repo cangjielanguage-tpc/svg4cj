@@ -6,8 +6,8 @@ package svg
 
 open class RenderOptionsBase {
     var css: String = ""
-    var cssRuleset: RuleSet = RuleSet()
-    var preserveAspectRatio: PreserveAspectRatio = PreserveAspectRatio()
+    var cssRuleset: ?RuleSet = None
+    var preserveAspectRatio: ?PreserveAspectRatio = None
     var targetId: String = ""
     var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
     var viewId: String = ""
@@ -41,7 +41,7 @@ open class RenderOptionsBase {
     }
 
     public open func hasCss(): Bool {
-        return !this.css.isEmpty() && this.css.trimAscii().size > 0 || this.cssRuleset != RuleSet()
+        return !this.css.isEmpty() && this.css.trimAscii().size > 0 || this.cssRuleset.isSome()
     }
 
     public open func setPreserveAspectRatio(preserveAspectRatio: PreserveAspectRatio): RenderOptionsBase {
@@ -50,7 +50,7 @@ open class RenderOptionsBase {
     }
 
     public open func hasPreserveAspectRatio(): Bool {
-        return this.preserveAspectRatio != PreserveAspectRatio()
+        return this.preserveAspectRatio.isSome()
     }
 
     public open func setView(viewId: String): RenderOptionsBase {
