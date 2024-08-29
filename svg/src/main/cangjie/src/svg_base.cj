@@ -8,7 +8,7 @@ public class SVGBase {
     static let DEFAULT_PICTURE_WIDTH: Int64 = 512
     static let DEFAULT_PICTURE_HEIGHT: Int64 = 512
     static let SQRT2: Float64 = 1.414213562373095
-    static let externalFileResolverSingleton: ?SVGExternalFileResolver = None
+    static let externalFileResolverSingleton: SVGExternalFileResolver = SVGExternalFileResolver()
     static let enableInternalEntitiesSingleton: Bool = true
     var externalFileResolver: SVGExternalFileResolver = SVGExternalFileResolver()
     var enableInternalEntities: Bool
@@ -28,21 +28,21 @@ public class SVGBase {
         return createParser().parseString(svg)
     }
 
-   public static func getFromResource(media: OhosResource, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
-       let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
-       let value: Array<UInt8> = resourceManager.getMediaContent(media, 100)
-       let data = String.fromUtf8(value)
-       let svgBase = getFromString(data)
-       callback(svgBase)
-   }
+    public static func getFromResource(media: OhosResource, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
+        let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
+        let value: Array<UInt8> = resourceManager.getMediaContent(media, 100)
+        let data = String.fromUtf8(value)
+        let svgBase = getFromString(data)
+        callback(svgBase)
+    }
 
-   public static func getFromRawfile(rawfileName: String, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
-       let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
-       let value: Array<UInt8> = resourceManager.getRawFileContent(rawfileName)
-       let data = String.fromUtf8(value)
-       let svgBase = getFromString(data)
-       callback(svgBase)
-   }
+    public static func getFromRawfile(rawfileName: String, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
+        let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
+        let value: Array<UInt8> = resourceManager.getRawFileContent(rawfileName)
+        let data = String.fromUtf8(value)
+        let svgBase = getFromString(data)
+        callback(svgBase)
+    }
 
     public func setRenderDPI(dpi: Float64): Unit {
         this.renderDPI = dpi
@@ -65,16 +65,16 @@ public class SVGBase {
         this.rootElement = rootElement
     }
 
-    func resolveIRI(s: ?String): ?SvgObject {
-        if (s.isNone()) {
-            return None
+    func resolveIRI(s: String): SvgObject {
+        if (s == "") {
+            return SvgObject()
         }
-        var iri: String = s.getOrThrow()
+        var iri: String = s
         iri = cssQuotedString(iri)
         if (iri.size > 1 && iri.startsWith("#")) {
-            return (getElementById(iri[1..]).getOrThrow() as SvgObject).getOrThrow()
+            return (getElementById(iri[1..]) as SvgObject).getOrThrow()
         }
-        return None
+        return SvgObject()
     }
 
     private func cssQuotedString(s: String): String {
@@ -111,24 +111,24 @@ public class SVGBase {
         this.desc = desc
     }
 
-    func getElementById(id: String): ?SvgElementBase {
+    func getElementById(id: String): SvgElementBase {
         if (id.size == 0 || id == "") {
-            return None
+            return SvgElementBase()
         }
         if (id == this.rootElement.id) {
             return (this.rootElement as SvgElementBase).getOrThrow()
         }
         if (this.idToElementMap.contains(id)) {
-            return this.idToElementMap.get(id)
+            return this.idToElementMap.get(id) ?? SvgElementBase()
         }
-        let result: ?SvgElementBase = getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
-        if (result.isSome()) {
-            this.idToElementMap.put(id, result.getOrThrow())
+        let result: SvgElementBase = getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
+        if (result != SvgElementBase()) {
+            this.idToElementMap.put(id, result)
         }
         return result
     }
 
-    private func getElementById2(obj: SvgContainer, id: String): ?SvgElementBase {
+    private func getElementById2(obj: SvgContainer, id: String): SvgElementBase {
         if (obj is SvgElementBase) {
             let elem: SvgElementBase = (obj as SvgElementBase).getOrThrow()
             if (id == elem.id) {
@@ -144,14 +144,14 @@ public class SVGBase {
                     return childElem
                 }
                 if (child is SvgContainer) {
-                    let found: ?SvgElementBase = getElementById2((child as SvgContainer).getOrThrow(), id)
-                    if (found.isSome()) {
+                    let found: SvgElementBase = getElementById2((child as SvgContainer).getOrThrow(), id)
+                    if (found != SvgElementBase()) {
                         return found
                     }
                 }
             }
         }
-        return None
+        return SvgElementBase()
     }
 
     private func getElementsByTagName(nodeName: String, res: ArrayList<SvgObject>, o: SvgObject): ArrayList<SvgObject> {
@@ -187,10 +187,18 @@ struct Units {
     static let percent: String = "percent"
 }
 
-struct GradientSpread {
+class GradientSpread {
     let pad: String = "pad"
     let reflect: String = "reflect"
     let repeat: String = "repeat"
+
+    public operator func ==(that: GradientSpread): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: GradientSpread): Bool {
+        return !refEq(this, that)
+    }
 }
 
 public class Box {
@@ -218,7 +226,7 @@ public class Box {
     }
 
     func toRectF(): MyRect {
-        return MyRect(this.minX, this.minY, this.maxX(), this.maxY(), Option<MyRect>.None)
+        return MyRect(left: this.minX, top: this.minY, right: maxX(), bottom: maxY())
     }
 
     func maxX(): Float64 {
@@ -236,12 +244,20 @@ public class Box {
         if (other.minY < this.minY) {
             this.minY = other.minY
         }
-        if (other.maxX() > this.maxX()) {
+        if (other.maxX() > maxX()) {
             this.width = other.maxX() - this.minX
         }
-        if (other.maxY() > this.maxY()) {
+        if (other.maxY() > maxY()) {
             this.height = other.maxY() - this.minY
         }
+    }
+
+    public operator func ==(that: Box): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: Box): Bool {
+        return !refEq(this, that)
     }
 
     public func toString(): String {
@@ -253,26 +269,42 @@ open class SvgPaint <: ToString {
     public open func toString(): String {
         return ""
     }
+
+    public operator func ==(that: SvgPaint): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: SvgPaint): Bool {
+        return !refEq(this, that)
+    }
 }
 
 public open class Svg <: SvgViewBoxContainer {
-    var x: SVGLength = SVGLength(0.0, Option<String>.None)
-    var y: SVGLength = SVGLength(0.0, Option<String>.None)
-    var width: SVGLength = SVGLength(0.0, Option<String>.None)
-    var height: SVGLength = SVGLength(0.0, Option<String>.None)
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
     public var version: String = ""
 
     public func getNodeName(): String {
         return "svg"
     }
+
+    public operator func ==(that: Svg): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: Svg): Bool {
+        return !refEq(this, that)
+    }
 }
 
 public open class SvgViewBoxContainer <: SvgPreserveAspectRatioContainer {
-    var viewBox: ?Box = None
+    var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
 }
 
 public open class SvgPreserveAspectRatioContainer <: SvgConditionalContainer {
-    var preserveAspectRatio: ?PreserveAspectRatio = None
+    var preserveAspectRatio: PreserveAspectRatio = PreserveAspectRatio("", "")
 }
 
 public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgConditional {
@@ -333,8 +365,8 @@ public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgCond
 }
 
 public open class SvgObject <: ToString {
-    let document: ?SVGBase = None
-    let parent: ?SvgContainer = None
+    var document: ?SVGBase = None
+    var parent: ?SvgContainer = None
     public let types: String = ""
 
     public open func getNodeName(): String {
@@ -343,6 +375,14 @@ public open class SvgObject <: ToString {
 
     public open func toString(): String {
         return types
+    }
+
+    public operator func ==(that: SvgObject): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: SvgObject): Bool {
+        return !refEq(this, that)
     }
 }
 
@@ -355,12 +395,12 @@ public interface SvgContainer {
 public open class SvgElementBase <: SvgObject {
     var id: String = ""
     var spacePreserve: Bool = false
-    var baseStyle: ?Style = None
-    var style: ?Style = None
+    var baseStyle: Style = Style()
+    var style: Style = Style()
     var classNames: ArrayList<String> = ArrayList<String>()
 
     public func toString(): String {
-        return this.getNodeName()
+        return getNodeName()
     }
 
     operator func ==(that: SvgElementBase): Bool {
@@ -369,7 +409,7 @@ public open class SvgElementBase <: SvgObject {
 }
 
 public open class SvgElement <: SvgElementBase {
-    public var boundingBox: ?Box = None
+    public var boundingBox: Box = Box(0.0, 0.0, 0.0, 0.0)
 }
 
 public interface SvgConditional {
@@ -395,17 +435,25 @@ public interface SvgConditional {
 }
 
 class Colour <: SvgPaint {
-    var colour: String
-    static let BLACK: Colour = Colour("#000000")
-    static let TRANSPARENT: Colour = Colour("#ffffffff")
+    var colour: Color
+    static let BLACK: Colour = Colour(Color(0x000000))
+    static let TRANSPARENT: Colour = Colour(Color(0xFFFFFF))
 
-    init(val: String) {
+    init(val: Color) {
         super()
         this.colour = val
     }
 
+    public operator func ==(that: Colour): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: Colour): Bool {
+        return !refEq(this, that)
+    }
+
     public func toString(): String {
-        return "#%08x ${this.colour}"
+        return "#%08x ${this.colour.toUInt32()}"
     }
 }
 
@@ -437,17 +485,19 @@ class PaintReference <: SvgPaint {
 }
 
 class SVGLength {
-    var value: Float64
-    var uni: String
-    static let ZERO: SVGLength = SVGLength(0.0, "")
+    var value: Float64 = 0.0
+    var uni: String = ""
+    static let ZERO: SVGLength = SVGLength()
 
-    init(value: Float64, uni: ?String) {
-        var u: ?String = uni
+    init() {}
+
+    init(value: Float64, u!: String = "") {
+        var uni: String = u
         this.value = value
-        if (u.isNone()) {
-            u = Units.px
+        if (uni == "") {
+            uni = Units.px
         }
-        this.uni = u.getOrThrow()
+        this.uni = uni
     }
 
     func floatValueBox(renderer: SVGRenderer): Float64 {
@@ -460,11 +510,11 @@ class SVGLength {
             case "pt" => return this.value * renderer.getDPI() / 72.0
             case "pc" => return this.value * renderer.getDPI() / 6.0
             case "percent" =>
-                let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
-                if (viewPortUser.isNone()) {
+                let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
+                if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
                     return this.value
                 } else {
-                    return this.value * viewPortUser.getOrThrow().width / 100.0
+                    return this.value * viewPortUser.width / 100.0
                 }
             case "px" => return this.value
             case _ => return this.value
@@ -475,30 +525,41 @@ class SVGLength {
         match (this.uni) {
             case "em" => return this.value * renderer.getCurrentFontSize()
             case "ex" => return this.value * renderer.getCurrentFontXHeight()
-           case "in" => return (px2vp(Length(this.value * renderer.getDPI())) ?? Length(0.0)).value
-           case "cm" => return (px2vp(Length(this.value * renderer.getDPI() / 2.54)) ?? Length(0.0)).value
-           case "mm" => return (px2vp(Length(this.value * renderer.getDPI() / 25.4)) ?? Length(0.0)).value
-           case "pt" => return (px2vp(Length(this.value * renderer.getDPI() / 72.0)) ?? Length(0.0)).value
-           case "pc" => return (px2vp(Length(this.value * renderer.getDPI() / 6.0)) ?? Length(0.0)).value
-           case "percent" =>
-               let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
-               if (viewPortUser.isNone()) {
-                   return (px2vp(Length(this.value)) ?? Length(0.0)).value
-               } else {
-                   return (px2vp(Length(this.value * viewPortUser.getOrThrow().width / 100.0)) ?? Length(0.0)).value
-               }
-            case "px" => return this.value
-           case _ => return (px2vp(Length(this.value)) ?? Length(0.0)).value
+            case "in" => return (px2vp(Length(this.value * renderer.getDPI(), unitType: LengthType.px)) ?? Length(0.0,
+                unitType: LengthType.px)).value
+            case "cm" => return (px2vp(Length((this.value * renderer.getDPI() / 2.54), unitType: LengthType.px)) ??
+                Length(0.0, unitType: LengthType.px)).value
+            case "mm" => return (px2vp(Length((this.value * renderer.getDPI() / 25.4), unitType: LengthType.px)) ??
+                Length(0.0, unitType: LengthType.px)).value
+            case "pt" => return (px2vp(Length((this.value * renderer.getDPI() / 72.0), unitType: LengthType.px)) ??
+                Length(0.0, unitType: LengthType.px)).value
+            case "pc" => return (px2vp(Length((this.value * renderer.getDPI() / 6.0), unitType: LengthType.px)) ??
+                Length(0.0, unitType: LengthType.px)).value
+            case "percent" =>
+                let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
+                if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
+                    return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
+                        value
+                } else {
+                    return (px2vp(Length((this.value * viewPortUser.width / 100.0), unitType: LengthType.px)) ?? Length(
+                        0.0, unitType: LengthType.px)).value
+                }
+            case "px" => return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0,
+                unitType: LengthType.px)).value
+            case _ => return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
+                value
         }
     }
 
     func floatValueY(renderer: SVGRenderer): Float64 {
         if (this.uni == Units.percent) {
-            let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
-            if (viewPortUser.isNone()) {
-               return (px2vp(Length(this.value)) ?? Length(0.0)).value
+            let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
+            if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
+                return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
+                    value
             }
-           return (px2vp(Length(this.value * viewPortUser.getOrThrow().height / 100.0)) ?? Length(0.0)).value
+            return (px2vp(Length((this.value * viewPortUser.height / 100.0), unitType: LengthType.px)) ?? Length(0.0,
+                unitType: LengthType.px)).value
         }
         return floatValueX(renderer)
     }
@@ -507,25 +568,26 @@ class SVGLength {
         return this.value
     }
 
-    func floatValue(renderer: SVGRenderer, max: ?Float64): Float64 {
-        if (max.isSome()) {
+    func floatValue(renderer: SVGRenderer, max!: Float64 = 0.0): Float64 {
+        if (max != 0.0) {
             if (this.uni == Units.percent) {
-                return this.value * max.getOrThrow() / 100.0
+                return this.value * max / 100.0
             }
             return floatValueX(renderer)
         } else {
             if (this.uni == Units.percent) {
-                let viewPortUser: ?Box = renderer.getCurrentViewPortInUserUnits()
-                if (viewPortUser.isNone()) {
+                let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
+                if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
                     return this.value
                 }
-                let w: Float64 = viewPortUser.getOrThrow().width
-                let h: Float64 = viewPortUser.getOrThrow().height
+                let w: Float64 = viewPortUser.width
+                let h: Float64 = viewPortUser.height
                 if (w == h) {
                     return this.value * w / 100.0
                 }
                 let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
-               return (px2vp(Length(this.value * n / 100.0)) ?? Length(0.0)).value
+                return (px2vp(Length((this.value * n / 100.0), unitType: LengthType.px)) ?? Length(0.0,
+                    unitType: LengthType.px)).value
             }
             return floatValueX(renderer)
         }
@@ -560,16 +622,26 @@ class SVGLength {
 }
 
 class CSSClipRect {
-    var top: SVGLength
-    var right: SVGLength
-    var bottom: SVGLength
-    var left: SVGLength
+    var top: SVGLength = SVGLength()
+    var right: SVGLength = SVGLength()
+    var bottom: SVGLength = SVGLength()
+    var left: SVGLength = SVGLength()
+
+    init() {}
 
     init(top: SVGLength, right: SVGLength, bottom: SVGLength, left: SVGLength) {
         this.top = top
         this.right = right
         this.bottom = bottom
         this.left = left
+    }
+
+    public operator func ==(that: CSSClipRect): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: CSSClipRect): Bool {
+        return !refEq(this, that)
     }
 }
 
@@ -663,10 +735,10 @@ class A <: Group {
 
 class Use <: Group {
     let href: String = ""
-    let x: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y: SVGLength = SVGLength(0.0, Option<String>.None)
-    let width: SVGLength = SVGLength(0.0, Option<String>.None)
-    let heightSVGLength = SVGLength(0.0, Option<String>.None)
+    let x: SVGLength = SVGLength()
+    let y: SVGLength = SVGLength()
+    let width: SVGLength = SVGLength()
+    let height: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "use"
@@ -683,12 +755,12 @@ class Path2 <: GraphicsElement {
 }
 
 class Rect2 <: GraphicsElement {
-    var x: SVGLength = SVGLength(0.0, Option<String>.None)
-    var y: SVGLength = SVGLength(0.0, Option<String>.None)
-    var width: SVGLength = SVGLength(0.0, Option<String>.None)
-    var height: SVGLength = SVGLength(0.0, Option<String>.None)
-    var rx: SVGLength = SVGLength(0.0, Option<String>.None)
-    var ry: SVGLength = SVGLength(0.0, Option<String>.None)
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength(100.0)
+    var height: SVGLength = SVGLength(100.0)
+    var rx: SVGLength = SVGLength()
+    var ry: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "rect"
@@ -696,9 +768,9 @@ class Rect2 <: GraphicsElement {
 }
 
 class Circle2 <: GraphicsElement {
-    var cx: SVGLength = SVGLength(0.0, Option<String>.None)
-    var cy: SVGLength = SVGLength(0.0, Option<String>.None)
-    var r: SVGLength = SVGLength(0.0, Option<String>.None)
+    var cx: SVGLength = SVGLength()
+    var cy: SVGLength = SVGLength()
+    var r: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "circle"
@@ -706,10 +778,10 @@ class Circle2 <: GraphicsElement {
 }
 
 class Ellipse2 <: GraphicsElement {
-    var cx: SVGLength = SVGLength(0.0, Option<String>.None)
-    var cy: SVGLength = SVGLength(0.0, Option<String>.None)
-    var rx: SVGLength = SVGLength(0.0, Option<String>.None)
-    var ry: SVGLength = SVGLength(0.0, Option<String>.None)
+    var cx: SVGLength = SVGLength()
+    var cy: SVGLength = SVGLength()
+    var rx: SVGLength = SVGLength()
+    var ry: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "ellipse"
@@ -717,10 +789,10 @@ class Ellipse2 <: GraphicsElement {
 }
 
 class Line2 <: GraphicsElement {
-    var x1: SVGLength = SVGLength(0.0, Option<String>.None)
-    var y1: SVGLength = SVGLength(0.0, Option<String>.None)
-    var x2: SVGLength = SVGLength(0.0, Option<String>.None)
-    var y2: SVGLength = SVGLength(0.0, Option<String>.None)
+    var x1: SVGLength = SVGLength()
+    var y1: SVGLength = SVGLength()
+    var x2: SVGLength = SVGLength()
+    var y2: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "line"
@@ -836,7 +908,7 @@ class TRef <: TextContainer & TextChild {
 
 class TextPath <: TextContainer & TextChild {
     let href: String = ""
-    let startOffset: SVGLength = SVGLength(0.0, Option<String>.None)
+    let startOffset: SVGLength = SVGLength()
     private var textRoot: TextRoot = Text2()
 
     public func setTextRoot(obj: TextRoot): Unit {
@@ -866,10 +938,10 @@ class Symbol <: SvgViewBoxContainer & NotDirectlyRendered {
 
 class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
     var markerUnitsAreUser: Bool = false
-    var refX: SVGLength = SVGLength(0.0, Option<String>.None)
-    var refY: SVGLength = SVGLength(0.0, Option<String>.None)
-    var markerWidth: SVGLength = SVGLength(0.0, Option<String>.None)
-    var markerHeight: SVGLength = SVGLength(0.0, Option<String>.None)
+    var refX: SVGLength = SVGLength()
+    var refY: SVGLength = SVGLength()
+    var markerWidth: SVGLength = SVGLength()
+    var markerHeight: SVGLength = SVGLength()
     var orient: Float64 = 0.0
 
     public func getNodeName(): String {
@@ -878,11 +950,11 @@ class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
 }
 
 open class GradientElement <: SvgElementBase & SvgContainer {
-    let children: ArrayList<SvgObject> = ArrayList<SvgObject>()
-    let gradientUnitsAreUser: Bool = false
-    let gradientTransform: Matrix2D2 = Matrix2D2()
-    let spreadMethod: GradientSpread = GradientSpread()
-    let href: String = ""
+    var children: ArrayList<SvgObject> = ArrayList<SvgObject>()
+    var gradientUnitsAreUser: Bool = false
+    var gradientTransform: Matrix2D2 = Matrix2D2()
+    var spreadMethod: GradientSpread = GradientSpread()
+    var href: String = ""
 
     public func getChildren(): ArrayList<SvgObject> {
         return this.children
@@ -913,10 +985,10 @@ class Stop <: SvgElementBase & SvgContainer {
 }
 
 class SvgLinearGradient <: GradientElement {
-    let x1: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y1: SVGLength = SVGLength(0.0, Option<String>.None)
-    let x2: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y2: SVGLength = SVGLength(0.0, Option<String>.None)
+    var x1: SVGLength = SVGLength()
+    var y1: SVGLength = SVGLength()
+    var x2: SVGLength = SVGLength()
+    var y2: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "linearGradient"
@@ -924,11 +996,11 @@ class SvgLinearGradient <: GradientElement {
 }
 
 class SvgRadialGradient <: GradientElement {
-    let cx: SVGLength = SVGLength(0.0, Option<String>.None)
-    let cy: SVGLength = SVGLength(0.0, Option<String>.None)
-    let r: SVGLength = SVGLength(0.0, Option<String>.None)
-    let fx: SVGLength = SVGLength(0.0, Option<String>.None)
-    let fy: SVGLength = SVGLength(0.0, Option<String>.None)
+    var cx: SVGLength = SVGLength()
+    var cy: SVGLength = SVGLength()
+    var r: SVGLength = SVGLength()
+    var fx: SVGLength = SVGLength()
+    var fy: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "radialGradient"
@@ -944,14 +1016,14 @@ class ClipPath <: Group & NotDirectlyRendered {
 }
 
 class Pattern <: SvgViewBoxContainer & NotDirectlyRendered {
-    let patternUnitsAreUser: Bool = false
-    let patternContentUnitsAreUser: Bool = false
-    let patternTransform: Matrix2D2 = Matrix2D2()
-    let x: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y: SVGLength = SVGLength(0.0, Option<String>.None)
-    let width: SVGLength = SVGLength(0.0, Option<String>.None)
-    let height: SVGLength = SVGLength(0.0, Option<String>.None)
-    let href: String = ""
+    var patternUnitsAreUser: Bool = false
+    var patternContentUnitsAreUser: Bool = false
+    var patternTransform: Matrix2D2 = Matrix2D2()
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
+    var href: String = ""
 
     public func getNodeName(): String {
         return "pattern"
@@ -960,13 +1032,13 @@ class Pattern <: SvgViewBoxContainer & NotDirectlyRendered {
 
 class Image2 <: SvgPreserveAspectRatioContainer & HasTransform {
     let href: String = ""
-    let x: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y: SVGLength = SVGLength(0.0, Option<String>.None)
-    let width: SVGLength = SVGLength(0.0, Option<String>.None)
-    let height: SVGLength = SVGLength(0.0, Option<String>.None)
+    let x: SVGLength = SVGLength()
+    let y: SVGLength = SVGLength()
+    let width: SVGLength = SVGLength()
+    let height: SVGLength = SVGLength()
     var transform: Matrix2D2 = Matrix2D2()
-    let translateX: SVGLength = SVGLength(0.0, Option<String>.None)
-    let translateY: SVGLength = SVGLength(0.0, Option<String>.None)
+    let translateX: SVGLength = SVGLength()
+    let translateY: SVGLength = SVGLength()
 
     public func setTransform(transform: Matrix2D2): Unit {
         this.transform = transform
@@ -989,10 +1061,10 @@ class Mask <: SvgConditionalContainer & NotDirectlyRendered {
     let maskUnitsAreUser: Bool = false
     let boolean: Bool = false
     let maskContentUnitsAreUser: Bool = false
-    let x: SVGLength = SVGLength(0.0, Option<String>.None)
-    let y: SVGLength = SVGLength(0.0, Option<String>.None)
-    let width: SVGLength = SVGLength(0.0, Option<String>.None)
-    let height: SVGLength = SVGLength(0.0, Option<String>.None)
+    let x: SVGLength = SVGLength()
+    let y: SVGLength = SVGLength()
+    let width: SVGLength = SVGLength()
+    let height: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "mask"
@@ -1081,7 +1153,7 @@ class PathDefinition <: PathInterface {
 
     public func lineTo(x: Int64, y: Int64): Unit {
         addCommand(PathDefinition.LINETO)
-        this.coordsEnsure(2)
+        coordsEnsure(2)
         this.coords[this.coordsLength] = x
         this.coordsLength++
         this.coords[this.coordsLength] = y
@@ -1207,5 +1279,13 @@ class PathDefinition <: PathInterface {
                         this.coords[opt4], this.coords[opt5])
             }
         }
+    }
+
+    public operator func ==(that: PathDefinition): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: PathDefinition): Bool {
+        return !refEq(this, that)
     }
 }

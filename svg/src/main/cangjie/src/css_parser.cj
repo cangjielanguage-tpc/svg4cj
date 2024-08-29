@@ -17,18 +17,41 @@ class CSSParser {
     private var source: ?Source
     private var inMediaRule: Bool = false
 
-    init(rendererMediaType: String, s: ?Source, externalFileResolver: ?SVGExternalFileResolver) {
-        var source: ?Source = s
-        if (rendererMediaType == "") {
-            this.deviceMediaType = "screen"
-        }
-        if (source.isNone()) {
-            source = Source.Document
-        }
+    init(rendererMediaType!: String = "screen", source!: Source = Source.Document,
+        externalFileResolver!: SVGExternalFileResolver = SVGExternalFileResolver()) {
         this.deviceMediaType = rendererMediaType
         this.source = source
         this.externalFileResolver = externalFileResolver
     }
+
+    func parse(sheet: String): RuleSet {
+        let scan: CSSTextScanner = CSSTextScanner(sheet)
+        scan.skipWhitespace()
+        return parseRuleSet(scan)
+    }
+
+    private func parseRuleSet(scan: CSSTextScanner): RuleSet {
+        let ruleSet: RuleSet = RuleSet()
+        try {
+            while (!scan.empty()) {
+                if (scan.consume("<!--")) {
+                    continue
+                }
+                if (scan.consume("-->")) {
+                    continue
+                }
+                if (scan.consume("@")) {
+                    continue
+                }
+                break
+            }
+        } catch (e: Exception) {
+            println(CSSParser.TAG + "CSS parser terminated early due to error: " + "${e.printStackTrace()}")
+        }
+        return ruleSet
+    }
+
+
 }
 
 class RuleSet {

@@ -89,9 +89,9 @@ public open class TextScanner {
         let scalar: Float64 = this.nextFloat()
         let unit: String = this.nextUnit()
         if (unit == "") {
-            return SVGLength(scalar, Units.px)
+            return SVGLength(scalar, u: Units.px)
         } else {
-            return SVGLength(scalar, unit)
+            return SVGLength(scalar, u: unit)
         }
     }
 
