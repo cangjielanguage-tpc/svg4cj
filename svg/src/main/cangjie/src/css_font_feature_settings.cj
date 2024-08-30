@@ -81,8 +81,8 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     private static let FONT_VARIANT_ORDINAL: String = "ordinal"
     private static let FONT_VARIANT_SLASHED_ZERO: String = "slashed-zero"
     public static let ERROR: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    private static var LIGATURES_ALL_OFF: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    private static var CAPS_SMALL_CAPS: CSSFontFeatureSettings = CSSFontFeatureSettings()
+    private static var LIGATURES_ALL_OFF: ?CSSFontFeatureSettings = None
+    private static var CAPS_SMALL_CAPS: ?CSSFontFeatureSettings = None
     public static let FONT_FEATURE_SETTINGS_NORMAL: CSSFontFeatureSettings = makeDefaultSettings()
     static var LIGATURES_NORMAL: CSSFontFeatureSettings = {
         =>
@@ -144,25 +144,26 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         return EAST_ASIAN_ALL_OFF
     }()
 
-    private let settings: HashMap<String, Int64>
+    private var settings: HashMap<String, Int64> = HashMap<String, Int64>()
 
     public init() {
-        this.settings = HashMap<String, Int64>()
     }
 
     init(initialMap: HashMap<String, Int64>) {
         this.settings = initialMap
     }
 
-    public init(other: CSSFontFeatureSettings) {
-        this.settings = HashMap<String, Int64>(other.settings)
+    init(other: ?CSSFontFeatureSettings) {
+        if (let Some(v) <- other) {
+            this.settings = HashMap<String, Int64>(v.settings)
+        }
     }
 
-    public func applySettings(featureSettings: CSSFontFeatureSettings): Unit {
-        if (featureSettings == CSSFontFeatureSettings()) {
+    public func applySettings(featureSettings: ?CSSFontFeatureSettings): Unit {
+        if (featureSettings.isNone()) {
             return
         }
-        this.settings.putAll(featureSettings.settings)
+        this.settings.putAll(featureSettings().settings)
     }
 
     public func applyKerning(kern: String): Unit {
@@ -288,10 +289,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
     static func removeElement(arr: ArrayList<String>, element: String): Bool {
         for (i in 0..arr.size) {
-        	if (arr[i] == element) {
+            if (arr[i] == element) {
                 arr.remove(i)
-        		return true
-        	}
+                return true
+            }
         }
         return false
     }
@@ -309,7 +310,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         return found
     }
 
-    static func parseVariantLigatures(val: String): CSSFontFeatureSettings {
+    static func parseVariantLigatures(val: String): ?CSSFontFeatureSettings {
         if (val == FONT_VARIANT_NORMAL) {
             return LIGATURES_NORMAL
         } else if (val == FONT_VARIANT_NONE) {
@@ -318,17 +319,17 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         }
         let tokens: ArrayList<String> = extractTokensAsList(val)
         if (tokens.isEmpty()) {
-            return CSSFontFeatureSettings()
+            return None
         }
         ensureLigaturesNone()
-        let result: CSSFontFeatureSettings = parseVariantLigaturesSpecial(tokens)
-        if (result == CSSFontFeatureSettings() || result == ERROR || tokens.size > 0) {
-            return CSSFontFeatureSettings()
+        let result: ?CSSFontFeatureSettings = parseVariantLigaturesSpecial(tokens)
+        if (result.isNone() || result() == ERROR || tokens.size > 0) {
+            return None
         }
         return result
     }
 
-    private static func parseVariantLigaturesSpecial(tokens: ArrayList<String>): CSSFontFeatureSettings {
+    private static func parseVariantLigaturesSpecial(tokens: ArrayList<String>): ?CSSFontFeatureSettings {
         ensureLigaturesNone()
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings(LIGATURES_ALL_OFF)
         var found: Bool = false
@@ -402,7 +403,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         return result
     }
 
-    private static func parseVariantPositionSpecial(tokens: ArrayList<String>): CSSFontFeatureSettings {
+    private static func parseVariantPositionSpecial(tokens: ArrayList<String>): ?CSSFontFeatureSettings {
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings(POSITION_ALL_OFF)
         var found: Bool = false
         match (containsWhich(tokens, FONT_VARIANT_SUB, FONT_VARIANT_SUPER)) {
@@ -418,10 +419,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (found) {
             return result
         }
-        return CSSFontFeatureSettings()
+        return None
     }
 
-    static func parseVariantCaps(val: String): CSSFontFeatureSettings {
+    static func parseVariantCaps(val: String): ?CSSFontFeatureSettings {
         if (val == FONT_VARIANT_NORMAL) {
             return CAPS_ALL_OFF
         }
@@ -429,7 +430,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (setCapsFeature(result, val)) {
             return result
         }
-        return CSSFontFeatureSettings()
+        return None
     }
 
     private static func setCapsFeature(result: CSSFontFeatureSettings, val: String): Bool {
@@ -456,22 +457,22 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         return result
     }
 
-    static func parseVariantNumeric(val: String): CSSFontFeatureSettings {
+    static func parseVariantNumeric(val: String): ?CSSFontFeatureSettings {
         if (val == FONT_VARIANT_NORMAL) {
             return NUMERIC_ALL_OFF
         }
         let tokens: ArrayList<String> = extractTokensAsList(val)
         if (tokens.isEmpty()) {
-            return CSSFontFeatureSettings()
+            return None
         }
-        let result: CSSFontFeatureSettings = parseVariantNumericSpecial(tokens)
-        if (result == CSSFontFeatureSettings() || result == ERROR || tokens.size > 0) {
-            return CSSFontFeatureSettings()
+        let result: ?CSSFontFeatureSettings = parseVariantNumericSpecial(tokens)
+        if (result.isNone() || result() == ERROR || tokens.size > 0) {
+            return None
         }
         return result
     }
 
-    private static func parseVariantNumericSpecial(tokens: ArrayList<String>): CSSFontFeatureSettings {
+    private static func parseVariantNumericSpecial(tokens: ArrayList<String>): ?CSSFontFeatureSettings {
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings(NUMERIC_ALL_OFF)
         var found: Bool = false
         match (containsWhich(tokens, FONT_VARIANT_LINING_NUMS, FONT_VARIANT_OLDSTYLE_NUMS)) {
@@ -521,26 +522,26 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (found) {
             return result
         } else {
-            return CSSFontFeatureSettings()
+            return None
         }
     }
 
-    static func parseEastAsian(val: String): CSSFontFeatureSettings {
+    static func parseEastAsian(val: String): ?CSSFontFeatureSettings {
         if (val == FONT_VARIANT_NORMAL) {
             return EAST_ASIAN_ALL_OFF
         }
         let tokens: ArrayList<String> = extractTokensAsList(val)
         if (tokens.isEmpty()) {
-            return CSSFontFeatureSettings()
+            return None
         }
-        let result: CSSFontFeatureSettings = parseVariantEastAsianSpecial(tokens)
-        if (result == CSSFontFeatureSettings() || result == ERROR || tokens.size > 0) {
-            return CSSFontFeatureSettings()
+        let result: ?CSSFontFeatureSettings = parseVariantEastAsianSpecial(tokens)
+        if (result.isNone() || result() == ERROR || tokens.size > 0) {
+            return None
         }
         return result
     }
 
-    private static func parseVariantEastAsianSpecial(tokens: ArrayList<String>): CSSFontFeatureSettings {
+    private static func parseVariantEastAsianSpecial(tokens: ArrayList<String>): ?CSSFontFeatureSettings {
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings(EAST_ASIAN_ALL_OFF)
         var found: Bool = false
         let which: String = containsOneOf(tokens, FONT_VARIANT_JIS78, FONT_VARIANT_JIS83, FONT_VARIANT_JIS90,
@@ -575,7 +576,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (found) {
             return result
         } else {
-            return CSSFontFeatureSettings()
+            return None
         }
     }
 
@@ -606,61 +607,67 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (tokens.isEmpty()) {
             return
         }
-        let ligatures: CSSFontFeatureSettings = parseVariantLigaturesSpecial(tokens)
-        if (ligatures != CSSFontFeatureSettings()) {
-            if (ligatures == ERROR) {
+        let ligatures: ?CSSFontFeatureSettings = parseVariantLigaturesSpecial(tokens)
+        if (let Some(v) <- ligatures) {
+            if (v == ERROR) {
                 return
             }
         }
-        var position: CSSFontFeatureSettings = CSSFontFeatureSettings()
+        var position: ?CSSFontFeatureSettings = None
         if (tokens.size > 0) {
             position = parseVariantPositionSpecial(tokens)
-            if (position == ERROR) {
-                return
+            if (let Some(v) <- position) {
+                if (v == ERROR) {
+                    return
+                }
             }
         }
-        var caps: CSSFontFeatureSettings = CSSFontFeatureSettings()
+        var caps: ?CSSFontFeatureSettings = None
         if (tokens.size > 0) {
             caps = parseVariantCapsSpecial(tokens)
-            if (caps == ERROR) {
+            if (caps() == ERROR) {
                 return
             }
         }
-        var numeric: CSSFontFeatureSettings = CSSFontFeatureSettings()
+        var numeric: ?CSSFontFeatureSettings = None
         if (tokens.size > 0) {
             numeric = parseVariantNumericSpecial(tokens)
-            if (numeric == ERROR) {
-                return
+            if (let Some(v) <- numeric) {
+                if (v == ERROR) {
+                    return
+                }
             }
         }
-        var eastAsian: CSSFontFeatureSettings = CSSFontFeatureSettings()
+        var eastAsian: ?CSSFontFeatureSettings = None
         if (tokens.size > 0) {
             eastAsian = parseVariantEastAsianSpecial(tokens)
-            if (eastAsian == ERROR) {
-                return
+            if (let Some(v) <- eastAsian) {
+                if (v == ERROR) {
+                    return
+                }
             }
         }
-        if (ligatures != CSSFontFeatureSettings()) {
+        if (ligatures.isSome()) {
             style.fontVariantLigatures = ligatures
             style.specifiedFlags |= Style.SPECIFIED_FONT_VARIANT_LIGATURES
         }
 
-        if (position != CSSFontFeatureSettings()) {
+        if (position.isSome()) {
             style.fontVariantPosition = position
             style.specifiedFlags |= Style.SPECIFIED_FONT_VARIANT_POSITION
         }
 
-        if (caps != CSSFontFeatureSettings()) {
+        if (caps.isSome()) {
             style.fontVariantCaps = caps
             style.specifiedFlags |= Style.SPECIFIED_FONT_VARIANT_CAPS
         }
 
-        if (numeric != CSSFontFeatureSettings()) {
+        if (numeric.isSome()) {
             style.fontVariantNumeric = numeric
             style.specifiedFlags |= Style.SPECIFIED_FONT_VARIANT_NUMERIC
         }
 
-        if (eastAsian != CSSFontFeatureSettings()) {
+        if (eastAsian.isSome()) {
             style.fontVariantEastAsian = eastAsian
             style.specifiedFlags |= Style.SPECIFIED_FONT_VARIANT_EAST_ASIAN
         }
@@ -680,7 +687,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     }
 
     private static func ensureLigaturesNone(): Unit {
-        if (LIGATURES_ALL_OFF != CSSFontFeatureSettings()) {
+        if (LIGATURES_ALL_OFF.isSome()) {
             return
         }
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings()
@@ -702,28 +709,31 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     }
 
     static func makeSmallCaps(): CSSFontFeatureSettings {
-        if (CAPS_SMALL_CAPS == CSSFontFeatureSettings()) {
-            CAPS_SMALL_CAPS = CSSFontFeatureSettings()
-            CAPS_SMALL_CAPS.settings.put(FEATURE_SMCP, VALUE_ON)
-            CAPS_SMALL_CAPS.settings.put(FEATURE_C2SC, VALUE_OFF)
-            CAPS_SMALL_CAPS.settings.put(FEATURE_PCAP, VALUE_OFF)
-            CAPS_SMALL_CAPS.settings.put(FEATURE_C2PC, VALUE_OFF)
-            CAPS_SMALL_CAPS.settings.put(FEATURE_UNIC, VALUE_OFF)
-            CAPS_SMALL_CAPS.settings.put(FEATURE_TITL, VALUE_OFF)
+        if (let Some(v) <- CAPS_SMALL_CAPS) {
+            v
+        } else {
+            let v = CSSFontFeatureSettings()
+            CAPS_SMALL_CAPS = v
+            v.settings.put(FEATURE_SMCP, VALUE_ON)
+            v.settings.put(FEATURE_C2SC, VALUE_OFF)
+            v.settings.put(FEATURE_PCAP, VALUE_OFF)
+            v.settings.put(FEATURE_C2PC, VALUE_OFF)
+            v.settings.put(FEATURE_UNIC, VALUE_OFF)
+            v.settings.put(FEATURE_TITL, VALUE_OFF)
+            v
         }
-        return CAPS_SMALL_CAPS
     }
 
-    public operator func ==(other: CSSFontFeatureSettings): Bool {
-        return refEq(this, other)
+    public operator func ==(that: CSSFontFeatureSettings): Bool {
+        return refEq(this, that)
     }
 
-    public operator func !=(other: CSSFontFeatureSettings): Bool {
-        return !refEq(this, other)
+    public operator func !=(that: CSSFontFeatureSettings): Bool {
+        return !refEq(this, that)
     }
 }
 
-class FontFeatureEntry {
+class FontFeatureEntry <: Equatable<FontFeatureEntry> {
     var name: String = ""
     var val: Int64 = 0
 
@@ -735,10 +745,10 @@ class FontFeatureEntry {
     }
 
     public operator func ==(other: FontFeatureEntry): Bool {
-        return refEq(this, other)
+        return this.name == other.name && this.val == other.val
     }
 
     public operator func !=(other: FontFeatureEntry): Bool {
-        return !refEq(this, other)
+        return !(this == other)
     }
 }

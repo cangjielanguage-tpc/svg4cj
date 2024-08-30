@@ -4,7 +4,7 @@
 
 package svg
 
-public class IntegerParser {
+public class IntegerParser <: Equatable<IntegerParser> {
     var pos: Int64
     var value: Int64
 
@@ -17,13 +17,13 @@ public class IntegerParser {
         return pos
     }
 
-    static func parseInt(input: String, startpos: Int64, len: Int64, includeSign: Bool): ?IntegerParser {
+    static func parseInt(input: String, startpos: Int64, len: Int64, includeSign: Bool): IntegerParser {
         var pos: Int64 = startpos
         var isNegative: Bool = false
         var value: Int64 = 0
         var ch: String
         if (pos >= len) {
-            return None
+            return IntegerParser(0, 0)
         }
         if (includeSign) {
             ch = input[pos].toString()
@@ -40,12 +40,12 @@ public class IntegerParser {
                 if (isNegative) {
                     value = value * 10 - Int64.parse(ch)
                     if (value < Int64.Min) {
-                        return None
+                        return IntegerParser(0, 0)
                     }
                 } else {
                     value = value * 10 + Int64.parse(ch)
                     if (value > Int64.Max) {
-                        return None
+                        return IntegerParser(0, 0)
                     }
                 }
             } else {
@@ -55,7 +55,7 @@ public class IntegerParser {
         }
 
         if (pos == sigStart) {
-            return None
+            return IntegerParser(0, 0)
         }
         return IntegerParser(value, pos)
     }
@@ -64,12 +64,12 @@ public class IntegerParser {
         return value
     }
 
-    static func parseHex(input: String, startpos: Int64, len: Int64): ?IntegerParser {
+    static func parseHex(input: String, startpos: Int64, len: Int64): IntegerParser {
         var pos: Int64 = startpos
         var value: Int64 = 0
         var ch: String
         if (pos >= len) {
-            return None
+            return IntegerParser(0, 0)
         }
         while (pos < len) {
             ch = input[pos].toString()
@@ -83,13 +83,21 @@ public class IntegerParser {
                 break
             }
             if (value > 0xffffffff) {
-                return None
+                return IntegerParser(0, 0)
             }
             pos++
         }
         if (pos == startpos) {
-            return None
+            return IntegerParser(0, 0)
         }
         return IntegerParser(value, pos)
+    }
+
+    public operator func ==(that: IntegerParser): Bool {
+        return this.pos == that.pos && this.value == that.value
+    }
+
+    public operator func !=(that: IntegerParser): Bool {
+        return !(this == that)
     }
 }

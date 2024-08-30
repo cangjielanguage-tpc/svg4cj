@@ -4,8 +4,8 @@
 
 package svg
 
-class SVGParseException<: Exception {
-  public init(msg: String) {
-    super(msg)
-  }
+class SVGParseException <: Exception {
+    public init(msg: String) {
+        super(msg)
+    }
 }

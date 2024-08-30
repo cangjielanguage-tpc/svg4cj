@@ -60,8 +60,8 @@ public open class TextScanner {
         if (ip.isNone()) {
             return 0
         }
-        position = ip.getOrThrow().getEndPos()
-        return ip.getOrThrow().getValue()
+        position = ip().getEndPos()
+        return ip().getValue()
     }
 
     func possibleNextFloat(): Float64 {

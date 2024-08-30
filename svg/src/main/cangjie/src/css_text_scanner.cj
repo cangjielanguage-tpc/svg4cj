@@ -6,6 +6,8 @@ package svg
 
 public class CSSTextScanner <: TextScanner {
     static let PATTERN_BLOCK_COMMENTS: Regex = Regex("/\\/\\*[\\s\\S]*?\\*\\//")
+    let DEFAULT_INTEGER_PARSER: IntegerParser = IntegerParser(0, 0)
+    let DEFAULT_ANPLUSB: AnPlusB = AnPlusB(0, 0)
 
     public init(input: String) {
         super(PATTERN_BLOCK_COMMENTS.matcher(input).replaceAll(""))
@@ -43,9 +45,9 @@ public class CSSTextScanner <: TextScanner {
         return lastValidPos
     }
 
-    func nextSelectorGroup(): ?ArrayList<Selector> {
+    func nextSelectorGroup(): ArrayList<Selector> {
         if (empty()) {
-            return None
+            return ArrayList<Selector>()
         }
         let selectorGroup: ArrayList<Selector> = ArrayList<Selector>(1)
         var selector: Selector = Selector()
@@ -85,9 +87,9 @@ public class CSSTextScanner <: TextScanner {
         if (consume('*')) {
             selectorPart = SimpleSelector(combinator, "")
         } else {
-            let tag: ?String = nextIdentifier()
-            if (tag.isSome()) {
-                selectorPart = SimpleSelector(combinator, tag.getOrThrow())
+            let tag: String = nextIdentifier()
+            if (tag != "") {
+                selectorPart = SimpleSelector(combinator, tag)
                 selector.addedElement()
             }
         }
@@ -97,11 +99,11 @@ public class CSSTextScanner <: TextScanner {
                 if (selectorPart.isNone()) {
                     selectorPart = SimpleSelector(combinator, "")
                 }
-                let value: ?String = nextIdentifier()
-                if (value.isNone()) {
+                let value: String = nextIdentifier()
+                if (value == "") {
                     throw CSSParseException("Invalid \".class\" simpleSelectors")
                 }
-                selectorPart.getOrThrow().addAttrib(CSSParser.CLASS, AttribOp.EQUALS, value.getOrThrow())
+                selectorPart().addAttrib(CSSParser.CLASS, AttribOp.EQUALS, value)
                 selector.addedAttributeOrPseudo()
                 continue
             }
@@ -110,11 +112,11 @@ public class CSSTextScanner <: TextScanner {
                 if (selectorPart.isNone()) {
                     selectorPart = SimpleSelector(combinator, "")
                 }
-                let value: ?String = nextIdentifier()
-                if (value.isNone()) {
+                let value: String = nextIdentifier()
+                if (value == "") {
                     throw CSSParseException("Invalid \"#id\" simpleSelectors")
                 }
-                selectorPart.getOrThrow().addAttrib(CSSParser.ID, AttribOp.EQUALS, value.getOrThrow())
+                selectorPart().addAttrib(CSSParser.ID, AttribOp.EQUALS, value)
                 selector.addedIdAttribute()
                 continue
             }
@@ -125,9 +127,9 @@ public class CSSTextScanner <: TextScanner {
                     selectorPart = SimpleSelector(combinator, "")
                 }
                 skipWhitespace()
-                let attrName: ?String = nextIdentifier()
-                var attrValue: ?String = None
-                if (attrName.isNone()) {
+                let attrName: String = nextIdentifier()
+                var attrValue: String = ""
+                if (attrName == "") {
                     throw CSSParseException("Invalid attribute simpleSelectors")
                 }
                 skipWhitespace()
@@ -139,24 +141,21 @@ public class CSSTextScanner <: TextScanner {
                 } else if (consume("|=")) {
                     op = AttribOp.DASHMATCH
                 }
-
                 if (op.isSome()) {
                     skipWhitespace()
                     attrValue = nextAttribValue()
-                    if (attrValue.isNone()) {
+                    if (attrValue == "") {
                         throw CSSParseException("Invalid attribute simpleSelectors")
                     }
-
                     skipWhitespace()
                 }
                 if (!consume(']')) {
                     throw CSSParseException("Invalid attribute simpleSelectors")
                 }
-
                 if (op.isNone()) {
-                    selectorPart.getOrThrow().addAttrib(attrName.getOrThrow(), AttribOp.EXISTS, attrValue.getOrThrow())
+                    selectorPart().addAttrib(attrName, AttribOp.EXISTS, attrValue)
                 } else {
-                    selectorPart.getOrThrow().addAttrib(attrName.getOrThrow(), op.getOrThrow(), attrValue.getOrThrow())
+                    selectorPart().addAttrib(attrName, op(), attrValue)
                 }
                 selector.addedAttributeOrPseudo()
                 continue
@@ -166,27 +165,27 @@ public class CSSTextScanner <: TextScanner {
                 if (selectorPart.isNone()) {
                     selectorPart = SimpleSelector(combinator, "")
                 }
-                parsePseudoClass(selector, selectorPart.getOrThrow())
+                parsePseudoClass(selector, selectorPart())
                 continue
             }
             break
         }
 
         if (selectorPart.isSome()) {
-            selector.add(selectorPart.getOrThrow())
+            selector.add(selectorPart())
             return true
         }
         position = start
         return false
     }
 
-    private func nextAnPlusB(): ?AnPlusB {
+    private func nextAnPlusB(): AnPlusB {
         if (empty()) {
-            return None
+            return DEFAULT_ANPLUSB
         }
         var start: Int64 = position
-        if (!consume('(')) {
-            return None
+        if (!consume("(")) {
+            return DEFAULT_ANPLUSB
         }
         skipWhitespace()
         var result: AnPlusB
@@ -205,20 +204,20 @@ public class CSSTextScanner <: TextScanner {
                 bSign = -1
             }
             // Then an integer
-            var a: IntegerParser = IntegerParser(0, 0)
-            var b: ?IntegerParser = IntegerParser.parseInt(input, position, inputLength, false)
-            if (b.isSome()) {
-                position = b.getOrThrow().getEndPos()
+            var a: IntegerParser = DEFAULT_INTEGER_PARSER
+            var b: IntegerParser = IntegerParser.parseInt(input, position, inputLength, false)
+            if (b != DEFAULT_INTEGER_PARSER) {
+                position = b.getEndPos()
             }
             // If an 'n' is next then that last part was the 'a' part. Now check for the 'b' part.
             if (consume('n') || consume('N')) {
-                if (let Some(v) <- b) {
-                    a = v
+                if (b != DEFAULT_INTEGER_PARSER) {
+                    a = b
                 } else {
                     a = IntegerParser(1, position)
                 }
                 aSign = bSign
-                b = None
+                b = DEFAULT_INTEGER_PARSER
                 bSign = 1
                 skipWhitespace()
                 // Check for the sign for the b part
@@ -233,19 +232,19 @@ public class CSSTextScanner <: TextScanner {
                 if (hasB) {
                     skipWhitespace()
                     b = IntegerParser.parseInt(input, position, inputLength, false)
-                    if (let Some(v) <- b) {
-                        position = v.getEndPos()
+                    if (b != DEFAULT_INTEGER_PARSER) {
+                        position = b.getEndPos()
                     } else {
                         position = start
-                        return None
+                        return DEFAULT_ANPLUSB
                     }
                 }
             }
             // Construct the result in anticipation that we will get the end bracket next
-            if (b.isNone()) {
+            if (b == DEFAULT_INTEGER_PARSER) {
                 result = AnPlusB(aSign * a.getValue(), 0)
             } else {
-                result = AnPlusB(aSign * a.getValue(), bSign * b.getOrThrow().getValue())
+                result = AnPlusB(aSign * a.getValue(), bSign * b.getValue())
             }
         }
         skipWhitespace()
@@ -253,7 +252,7 @@ public class CSSTextScanner <: TextScanner {
             return result
         }
         position = start
-        return None
+        return DEFAULT_ANPLUSB
     }
 
     /*
@@ -300,9 +299,9 @@ public class CSSTextScanner <: TextScanner {
         }
         skipWhitespace()
         // Parse the parameter contents
-        let result: ?ArrayList<Selector> = nextSelectorGroup()
+        let result: ArrayList<Selector> = nextSelectorGroup()
 
-        if (result.isNone()) {
+        if (result.isEmpty()) {
             position = start
             return ArrayList<Selector>()
         }
@@ -311,7 +310,7 @@ public class CSSTextScanner <: TextScanner {
             return ArrayList<Selector>()
         }
         // Nesting a :not() pseudo class within a :not() is not allowed.
-        for (selector in result.getOrThrow()) {
+        for (selector in result) {
             if (selector.simpleSelectors.isEmpty()) {
                 break
             }
@@ -326,7 +325,7 @@ public class CSSTextScanner <: TextScanner {
                 }
             }
         }
-        return result.getOrThrow()
+        return result
     }
 
     /*
@@ -368,11 +367,11 @@ public class CSSTextScanner <: TextScanner {
         } else if (ident == PseudoClassIdents.nth_last_of_type) {
             let fromStart: Bool = ident == PseudoClassIdents.nth_child || ident == PseudoClassIdents.nth_of_type
             let ofType: Bool = ident == PseudoClassIdents.nth_of_type || ident == PseudoClassIdents.nth_last_of_type
-            let ab: ?AnPlusB = nextAnPlusB()
-            if (ab.isNone()) {
+            let ab: AnPlusB = nextAnPlusB()
+            if (ab == DEFAULT_ANPLUSB) {
                 throw CSSParseException("Invalid or missing parameter section for pseudo class: " + ident)
             }
-            pseudo = PseudoClassAnPlusB(ab.getOrThrow().a, ab.getOrThrow().b, fromStart, ofType, selectorPart.tag)
+            pseudo = PseudoClassAnPlusB(ab.a, ab.b, fromStart, ofType, selectorPart.tag)
             selector.addedAttributeOrPseudo()
         } else if (ident == PseudoClassIdents.not) {
             let notSelectorGroup: ArrayList<Selector> = nextPseudoNotParam()
@@ -380,7 +379,7 @@ public class CSSTextScanner <: TextScanner {
                 throw CSSParseException("Invalid or missing parameter section for pseudo class: " + ident)
             }
             pseudo = PseudoClassNot(notSelectorGroup)
-            selector.specificity = (pseudo as PseudoClassNot).getOrThrow().getSpecificity()
+            selector.specificity = (pseudo as PseudoClassNot)().getSpecificity()
         } else if (ident == PseudoClassIdents.target) {
             //TODO
             pseudo = PseudoClassTarget()
@@ -413,9 +412,9 @@ public class CSSTextScanner <: TextScanner {
         if (empty()) {
             return ""
         }
-        var result: ?String = nextQuotedString()
-        if (result.isSome()) {
-            return result.getOrThrow()
+        var result: String = nextQuotedString()
+        if (result != "") {
+            return result
         }
         return nextIdentifier()
     }
@@ -587,12 +586,20 @@ public class CSSTextScanner <: TextScanner {
     }
 }
 
-class AnPlusB {
+class AnPlusB <: Equatable<AnPlusB> {
     public var a: Int64
     public var b: Int64
 
     init(a: Int64, b: Int64) {
         this.a = a
         this.b = b
+    }
+
+    public operator func ==(that: AnPlusB): Bool {
+        return this.a == that.a && this.b == that.b
+    }
+
+    public operator func !=(that: AnPlusB): Bool {
+        return !(this == that)
     }
 }

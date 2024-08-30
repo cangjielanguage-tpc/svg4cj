@@ -72,7 +72,7 @@ public class SVGBase {
         var iri: String = s
         iri = cssQuotedString(iri)
         if (iri.size > 1 && iri.startsWith("#")) {
-            return (getElementById(iri[1..]) as SvgObject).getOrThrow()
+            return (getElementById(iri[1..]) as SvgObject)()
         }
         return SvgObject()
     }
@@ -111,26 +111,26 @@ public class SVGBase {
         this.desc = desc
     }
 
-    func getElementById(id: String): SvgElementBase {
+    func getElementById(id: String): ?SvgElementBase {
         if (id.size == 0 || id == "") {
-            return SvgElementBase()
+            return None
         }
         if (id == this.rootElement.id) {
-            return (this.rootElement as SvgElementBase).getOrThrow()
+            return (this.rootElement as SvgElementBase)()
         }
         if (this.idToElementMap.contains(id)) {
             return this.idToElementMap.get(id) ?? SvgElementBase()
         }
-        let result: SvgElementBase = getElementById2((this.rootElement as SvgContainer).getOrThrow(), id)
-        if (result != SvgElementBase()) {
-            this.idToElementMap.put(id, result)
+        let result: ?SvgElementBase = getElementById2((this.rootElement as SvgContainer)(), id)
+        if (let Some(v) <- result) {
+            this.idToElementMap.put(id, v)
         }
         return result
     }
 
-    private func getElementById2(obj: SvgContainer, id: String): SvgElementBase {
+    private func getElementById2(obj: SvgContainer, id: String): ?SvgElementBase {
         if (obj is SvgElementBase) {
-            let elem: SvgElementBase = (obj as SvgElementBase).getOrThrow()
+            let elem: SvgElementBase = (obj as SvgElementBase)()
             if (id == elem.id) {
                 return elem
             }
@@ -139,19 +139,19 @@ public class SVGBase {
                 if (!(child is SvgElementBase)) {
                     continue
                 }
-                let childElem: SvgElementBase = (child as SvgElementBase).getOrThrow()
+                let childElem: SvgElementBase = (child as SvgElementBase)()
                 if (id == childElem.id) {
                     return childElem
                 }
                 if (child is SvgContainer) {
-                    let found: SvgElementBase = getElementById2((child as SvgContainer).getOrThrow(), id)
-                    if (found != SvgElementBase()) {
+                    let found: ?SvgElementBase = getElementById2((child as SvgContainer)(), id)
+                    if (found.isSome()) {
                         return found
                     }
                 }
             }
         }
-        return SvgElementBase()
+        return None
     }
 
     private func getElementsByTagName(nodeName: String, res: ArrayList<SvgObject>, o: SvgObject): ArrayList<SvgObject> {
@@ -160,13 +160,13 @@ public class SVGBase {
         if (result.isEmpty()) {
             result = ArrayList<SvgObject>()
         }
-        obj = (this.rootElement as SvgObject).getOrThrow()
+        obj = (this.rootElement as SvgObject)()
 
         if (obj.getNodeName() == nodeName) {
             result.append(obj)
         }
         if (obj is SvgContainer) {
-            let arr: ArrayList<SvgObject> = (obj as SvgContainer).getOrThrow().getChildren()
+            let arr: ArrayList<SvgObject> = (obj as SvgContainer)().getChildren()
             for (element in arr) {
                 getElementsByTagName(nodeName, result, element)
             }
@@ -187,21 +187,21 @@ struct Units {
     static let percent: String = "percent"
 }
 
-class GradientSpread {
+class GradientSpread <: Equatable<GradientSpread> {
     let pad: String = "pad"
     let reflect: String = "reflect"
     let repeat: String = "repeat"
 
     public operator func ==(that: GradientSpread): Bool {
-        return refEq(this, that)
+        return this.pad == that.pad && this.reflect == that.reflect && this.repeat == that.repeat
     }
 
     public operator func !=(that: GradientSpread): Bool {
-        return !refEq(this, that)
+        return !(this == that)
     }
 }
 
-public class Box {
+public class Box <: Equatable<Box> {
     var minX: Float64
     var minY: Float64
     var width: Float64
@@ -253,11 +253,12 @@ public class Box {
     }
 
     public operator func ==(that: Box): Bool {
-        return refEq(this, that)
+        return this.minX == that.minX && this.minY == that.minY && this.width == that.width && this.height == that.
+            height
     }
 
     public operator func !=(that: Box): Bool {
-        return !refEq(this, that)
+        return !(this == that)
     }
 
     public func toString(): String {
@@ -265,7 +266,7 @@ public class Box {
     }
 }
 
-open class SvgPaint <: ToString {
+open class SvgPaint <: ToString & Equatable<SvgPaint> {
     public open func toString(): String {
         return ""
     }
@@ -288,14 +289,6 @@ public open class Svg <: SvgViewBoxContainer {
 
     public func getNodeName(): String {
         return "svg"
-    }
-
-    public operator func ==(that: Svg): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: Svg): Bool {
-        return !refEq(this, that)
     }
 }
 
@@ -376,14 +369,6 @@ public open class SvgObject <: ToString {
     public open func toString(): String {
         return types
     }
-
-    public operator func ==(that: SvgObject): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: SvgObject): Bool {
-        return !refEq(this, that)
-    }
 }
 
 public interface SvgContainer {
@@ -392,7 +377,7 @@ public interface SvgContainer {
     func addChild(elem: SvgObject): Unit
 }
 
-public open class SvgElementBase <: SvgObject {
+public open class SvgElementBase <: SvgObject & Equatable<SvgElementBase> {
     var id: String = ""
     var spacePreserve: Bool = false
     var baseStyle: Style = Style()
@@ -403,8 +388,12 @@ public open class SvgElementBase <: SvgObject {
         return getNodeName()
     }
 
-    operator func ==(that: SvgElementBase): Bool {
+    public operator func ==(that: SvgElementBase): Bool {
         return refEq(this, that)
+    }
+
+    public operator func !=(that: SvgElementBase): Bool {
+        return !refEq(this, that)
     }
 }
 
@@ -442,14 +431,6 @@ class Colour <: SvgPaint {
     init(val: Color) {
         super()
         this.colour = val
-    }
-
-    public operator func ==(that: Colour): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: Colour): Bool {
-        return !refEq(this, that)
     }
 
     public func toString(): String {
@@ -634,14 +615,6 @@ class CSSClipRect {
         this.right = right
         this.bottom = bottom
         this.left = left
-    }
-
-    public operator func ==(that: CSSClipRect): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: CSSClipRect): Bool {
-        return !refEq(this, that)
     }
 }
 
@@ -1279,13 +1252,5 @@ class PathDefinition <: PathInterface {
                         this.coords[opt4], this.coords[opt5])
             }
         }
-    }
-
-    public operator func ==(that: PathDefinition): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: PathDefinition): Bool {
-        return !refEq(this, that)
     }
 }
