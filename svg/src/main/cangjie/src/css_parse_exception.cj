@@ -4,10 +4,8 @@
 
 package svg
 
-public class CSSParseException <: Exception
-{
-   public init(msg: String)
-   {
-      super(msg)
-   }
+public class CSSParseException <: Exception {
+    public init(msg: String) {
+        super(msg)
+    }
 }

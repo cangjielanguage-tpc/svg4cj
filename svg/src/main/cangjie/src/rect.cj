@@ -5,16 +5,16 @@
 package svg
 
 public class MyRect {
-    var left: Float64
-    var top: Float64
-    var right: Float64
-    var bottom: Float64
+    var left: Float64 = 0.0
+    var top: Float64 = 0.0
+    var right: Float64 = 0.0
+    var bottom: Float64 = 0.0
 
-    init(left: ?Float64, top: ?Float64, right: ?Float64, bottom: ?Float64, r: ?MyRect) {
-        this.left = left ?? 0.0
-        this.top = top ?? 0.0
-        this.right = right ?? 0.0
-        this.bottom = bottom ?? 0.0
+    init(left!: Float64 = 0.0, top!: Float64 = 0.0, right!: Float64 = 0.0, bottom!: Float64 = 0.0, r!: ?MyRect = None) {
+        this.left = left
+        this.top = top
+        this.right = right
+        this.bottom = bottom
         if (let Some(v) <- r) {
             this.left = v.left
             this.top = v.top
@@ -23,11 +23,11 @@ public class MyRect {
         }
     }
 
-    public static func copyOrNull(r: ?MyRect): ?MyRect {
+    public static func copyOrNull(r: ?MyRect): MyRect {
         if (let Some(v) <- r) {
-            return MyRect(v.left, v.top, v.right, v.bottom, Option<MyRect>.None)
+            return MyRect(left: v.left, top: v.top, right: v.right, bottom: v.bottom, r: v)
         }
-        return None
+        return MyRect()
     }
 
     public func isEmpty(): Bool {

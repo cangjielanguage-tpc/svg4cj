@@ -33,9 +33,9 @@ class SVGRenderer {
         return this.dpi
     }
 
-    func getCurrentViewPortInUserUnits(): ?Box {
-        if (this.state.viewBox.isSome()) {
-            return this.state.viewBox.getOrThrow()
+    func getCurrentViewPortInUserUnits(): Box {
+        if (this.state.viewBox != Box(0.0, 0.0, 0.0, 0.0)) {
+            return this.state.viewBox
         } else {
             return this.state.viewPort
         }
@@ -43,7 +43,7 @@ class SVGRenderer {
 }
 
 class RendererState {
-    var viewPort: ?Box = None
-    var viewBox: ?Box = None
+    var viewPort: Box = Box(0.0, 0.0, 0.0, 0.0)
+    var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
     var fillPaint: Paint = Paint()
 }
