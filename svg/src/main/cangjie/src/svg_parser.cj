@@ -5,7 +5,6 @@
 package svg
 
 public interface SVGParser {
-
     func parseString(str: String): SVGBase
 
     func setInternalEntitiesEnabled(enable: Bool): SVGParser

@@ -4,7 +4,7 @@
 
 package svg
 
-struct Alignment {
+public struct Alignment {
     public static let none: String = "none"
     public static let xMinYMin: String = "xMinYMin"
     public static let xMidYMin: String = "xMidYMin"
@@ -23,11 +23,13 @@ struct Scale {
 }
 
 public class PreserveAspectRatio {
-    var alignment: ?String
-    var scale: ?String
+    var alignment: String = ""
+    var scale: String = ""
     static let aspectRatioKeywords: HashMap<String, String> = HashMap<String, String>()
 
-    init(alignment: ?String, scale: ?String) {
+    init() {}
+
+    init(alignment: String, scale: String) {
         this.alignment = alignment
         this.scale = scale
     }
@@ -45,8 +47,8 @@ public class PreserveAspectRatio {
         aspectRatioKeywords.put("xMaxYMax", Alignment.xMaxYMax)
     }
 
-    static let UNSCALED: PreserveAspectRatio = PreserveAspectRatio(Option<String>.None, Option<String>.None)
-    static let STRETCH: PreserveAspectRatio = PreserveAspectRatio(Alignment.none, Option<String>.None)
+    static let UNSCALED: PreserveAspectRatio = PreserveAspectRatio()
+    static let STRETCH: PreserveAspectRatio = PreserveAspectRatio()
     static let LETTERBOX: PreserveAspectRatio = PreserveAspectRatio(Alignment.xMidYMid, Scale.meet)
     static let START: PreserveAspectRatio = PreserveAspectRatio(Alignment.xMinYMin, Scale.meet)
     static let END: PreserveAspectRatio = PreserveAspectRatio(Alignment.xMaxYMax, Scale.meet)
@@ -59,11 +61,11 @@ public class PreserveAspectRatio {
         return parsePreserveAspectRatio(value)
     }
 
-    func getAlignment(): ?String {
+    func getAlignment(): String {
         return this.alignment
     }
 
-    public func getScale(): ?String {
+    public func getScale(): String {
         return this.scale
     }
 

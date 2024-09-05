@@ -63,13 +63,13 @@ public class Style {
     var mixBlendMode: String = ""
 
     var fontKerning: String = ""
-    var fontVariantLigatures: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontVariantPosition: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontVariantCaps: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontVariantNumeric: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontVariantEastAsian: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontFeatureSettings: CSSFontFeatureSettings = CSSFontFeatureSettings()
-    var fontVariationSettings: CSSFontFeatureSettings = CSSFontFeatureSettings()
+    var fontVariantLigatures: ?CSSFontFeatureSettings = None
+    var fontVariantPosition: ?CSSFontFeatureSettings = None
+    var fontVariantCaps: ?CSSFontFeatureSettings = None
+    var fontVariantNumeric: ?CSSFontFeatureSettings = None
+    var fontVariantEastAsian: ?CSSFontFeatureSettings = None
+    var fontFeatureSettings: ?CSSFontFeatureSettings = None
+    var fontVariationSettings: ?CSSFontFeatureSettings = None
     var writingMode: WritingMode = WritingMode.lr
     var glyphOrientationVertical: GlypOrientationVertical = GlypOrientationVertical.angle0
     var textOrientation: TextOrientation = TextOrientation.mixed
@@ -197,10 +197,8 @@ public class Style {
         if (val.size != 0) {
             if (val != "inherit") {
                 match (CSSBlendMode().fromString(localName)) {
-                    case "fill" =>
-                        style.specifiedFlags |= 1
-                    case "fill_rule" =>
-                        style.specifiedFlags |= 2
+                    case "fill" => style.specifiedFlags |= 1
+                    case "fill_rule" => style.specifiedFlags |= 2
                     case _ => ()
                 }
             }
@@ -223,14 +221,6 @@ public class Style {
         this.vectorEffect = VectorEffect().None
         this.isolation = Isolation().auto
         this.mixBlendMode = CSSBlendMode.normal
-    }
-
-    public operator func ==(that: Style): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: Style): Bool {
-        return !refEq(this, that)
     }
 }
 

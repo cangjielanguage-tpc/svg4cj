@@ -33,11 +33,11 @@ public class CSSFontVariationSettings {
         this.settings.put(key, value)
     }
 
-    public func applySettings(variationSet: CSSFontVariationSettings): Unit {
-        if (variationSet == CSSFontVariationSettings()) {
+    public func applySettings(variationSet: ?CSSFontVariationSettings): Unit {
+        if (variationSet.isNone()) {
             return
         }
-        this.settings.putAll(variationSet.settings)
+        this.settings.putAll(variationSet().settings)
     }
 
     public func toString(): String {
@@ -94,17 +94,9 @@ public class CSSFontVariationSettings {
         }
         return FontVariationEntry(name, num)
     }
-
-    public operator func ==(other: CSSFontVariationSettings): Bool {
-        return refEq(this, other)
-    }
-
-    public operator func !=(other: CSSFontVariationSettings): Bool {
-        return !refEq(this, other)
-    }
 }
 
-class FontVariationEntry {
+class FontVariationEntry <: Equatable<FontVariationEntry> {
     var name: String = ""
     var val: Float64 = 0.0
 
@@ -116,10 +108,10 @@ class FontVariationEntry {
     }
 
     public operator func ==(other: FontVariationEntry): Bool {
-        return refEq(this, other)
+        return this.name == other.name && this.val == other.val
     }
 
     public operator func !=(other: FontVariationEntry): Bool {
-        return !refEq(this, other)
+        return !(this == other)
     }
 }
