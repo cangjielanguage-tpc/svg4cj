@@ -18,7 +18,7 @@ public class SVGParserImpl <: SVGParser {
         return this
     }
 
-    public func setExternalFileResolver(fileResolver: ?SVGExternalFileResolver): SVGParser {
+    public func setExternalFileResolver(fileResolver: SVGExternalFileResolver): SVGParser {
         this.externalFileResolver = fileResolver
         return this
     }

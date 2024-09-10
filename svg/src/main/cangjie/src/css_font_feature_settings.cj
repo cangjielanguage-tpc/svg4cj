@@ -255,7 +255,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         }
         let result: ArrayList<String> = ArrayList<String>()
         while (!scan.empty()) {
-            result.append(scan.nextToken("", false))
+            result.append(scan.nextToken())
             scan.skipWhitespace()
         }
         return result

@@ -29,15 +29,15 @@ public class CSSTextScanner <: TextScanner {
         }
         var start: Int64 = position
         var lastValidPos: Int64 = position
-        var ch: Rune = input.toRuneArray()[position]
-        if (ch == r'-') {
-            ch = advanceChar()
+        var byte: Byte = input[position]
+        if (byte == b'-') {
+            byte = advanceChar()
         }
-        if ((ch >= r'A' && ch <= r'Z') || (ch >= r'a' && ch <= r'z') || (ch == r'-') || (ch == r'_') || (ch >= Rune(0x80))) {
-            ch = advanceChar()
-            while ((ch >= r'A' && ch <= r'Z') || (ch >= r'a' && ch <= r'z') || (ch >= r'0' && ch <= r'9') || (ch == r'-') ||
-                    (ch == r'_') || (ch >= Rune(0x80))) {
-                ch = advanceChar()
+        if ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte == b'-') || (byte == b'_') || (byte >= 0x80)) {
+            byte = advanceChar()
+            while ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte >= b'0' && byte <= b'9') || (byte == b'-') ||
+                    (byte == b'_') || (byte >= 0x80)) {
+                byte = advanceChar()
             }
             lastValidPos = position
         }
@@ -428,13 +428,13 @@ public class CSSTextScanner <: TextScanner {
         }
         var start: Int64 = position
         var lastValidPos: Int64 = position
-        var ch = input.toRuneArray()[position]
-        while (ch != r' ' && ch != r'}' && ch != r'!') {
-            if (!isWhitespace(ch)) {
+        var byte = input[position]
+        while (byte != b' ' && byte != b'}' && byte != b'!') {
+            if (!isWhitespace(byte)) {
                 // don't include an spaces at the end
                 lastValidPos = position + 1
             }
-            ch = advanceChar()
+            byte = advanceChar()
         }
         if (position > start) {
             return input[start..lastValidPos]
@@ -450,57 +450,58 @@ public class CSSTextScanner <: TextScanner {
         if (empty()) {
             return ""
         }
-        var ch = input.toRuneArray()[position]
-        let endQuote = ch
-        if (ch != r'\'' && ch != r'"') {
+        var byte = input[position]
+        let endQuote = byte
+        if (byte != b'\'' && byte != b'"') {
             return ""
         }
-        let sb: StringBuilder = StringBuilder()
+        let arr: ArrayList<Byte> = ArrayList<Byte>()
         position++
-        ch = nextChar()
-        while (ch != endQuote) {
-            if (ch == r'\\') {
+        byte = nextChar()
+        while (byte != endQuote) {
+            if (byte == b'\\') {
                 // Escaped char sequence
-                ch = nextChar()
-                if (ch == r" ") {
+                byte = nextChar()
+                if (byte == b' ') {
                     // EOF: do nothing
                     continue
                 }
-                if (ch == r'\n' || ch == r'\r' || ch == r'\f') { // a CSS newline
-                    ch = nextChar()
+                if (byte == b'\n' || byte == b'\r' || byte == b'\f') { // a CSS newline
+                    byte = nextChar()
                     continue // Newline: consume it
                 }
-                var hc: Int64 = hexChar(ch)
+                var hc: Int64 = hexChar(byte)
                 if (hc != -1) {
                     var codepoint: Int64 = hc
                     for (i in 0..5) {
-                        ch = nextChar()
-                        hc = hexChar(ch)
+                        byte = nextChar()
+                        hc = hexChar(byte)
                         if (hc == -1) {
                             break
                         }
                         codepoint = codepoint * 16 + hc
                     }
-                    sb.append(Rune(codepoint))
+                    arr.appendAll(codepoint.toString().toArray())
                 }
                 // Other chars just unescape to themselves
                 // Fall through to append
             }
-            sb.append(ch)
-            ch = nextChar()
+            arr.append(byte)
+            byte = nextChar()
         }
-        return sb.toString()
+        let rawArr = unsafe { arr.getRawArray()[..arr.size] }
+        return unsafe { String.fromUtf8Unchecked(rawArr) }
     }
 
-    private func hexChar(ch: Rune): Int64 {
-        if (ch >= r'0' && ch <= r'9') {
-            return Int64.parse(ch.toString()) - 48
+    private func hexChar(byte: Byte): Int64 {
+        if (byte >= b'0' && byte <= b'9') {
+            return Int64(byte) - 48
         }
-        if (ch >= r'A' && ch <= r'F') {
-            return Int64.parse(ch.toString()) - 65 + 10
+        if (byte >= b'A' && byte <= b'F') {
+            return Int64(byte) - 65 + 10
         }
-        if (ch >= r'a' && ch <= r'f') {
-            return Int64.parse(ch.toString()) - 97 + 10
+        if (byte >= b'a' && byte <= b'f') {
+            return Int64(byte) - 97 + 10
         }
         return -1
     }
@@ -539,50 +540,51 @@ public class CSSTextScanner <: TextScanner {
      * See nextURLToken().
      */
     func nextLegacyURL(): String {
-        let sb: StringBuilder = StringBuilder()
+        let arr: ArrayList<Byte> = ArrayList<Byte>()
         while (!empty()) {
-            var ch = input.toRuneArray()[position]
-            if (ch == r'\'' || ch == r'"' || ch == r'(' || ch == r')' || isWhitespace(ch)) {
+            var byte = input[position]
+            if (byte == b'\'' || byte == b'"' || byte == b'(' || byte == b')' || isWhitespace(byte)) {
                 break
             }
             this.position++
-            if (ch == r'\\') {
+            if (byte == b'\\') {
                 if (empty()) { // EOF: do nothing
                     continue
                 }
                 // Escaped char sequence
 
-                ch = input.toRuneArray()[position]
+                byte = input[position]
                 this.position++
-                if (ch == r'\n' || ch == r'\r' || ch == r'\f') { // a CSS newline
+                if (byte == b'\n' || byte == b'\r' || byte == b'\f') { // a CSS newline
                     continue // Newline: consume it
                 }
-                var hc: Int64 = hexChar(ch)
+                var hc: Int64 = hexChar(byte)
                 if (hc != -1) {
                     var codepoint: Int64 = hc
                     for (i in 1..5) {
                         if (empty()) {
                             break
                         }
-                        hc = hexChar(input.toRuneArray()[position])
+                        hc = hexChar(input[position])
                         if (hc == -1) { // Not a hex char
                             break
                         }
                         position++
                         codepoint = codepoint * 16 + hc
                     }
-                    sb.append(codepoint)
+                    arr.appendAll(codepoint.toString().toArray())
                     continue
                 }
                 // Other chars just unescape to themselves
                 // Fall through to append
             }
-            sb.append(ch)
+            arr.append(byte)
         }
-        if (sb.size == 0) {
+        if (arr.size == 0) {
             return ""
         }
-        return sb.toString()
+        let rawArr = unsafe { arr.getRawArray()[..arr.size] }
+        return unsafe { String.fromUtf8Unchecked(rawArr) }
     }
 }
 
