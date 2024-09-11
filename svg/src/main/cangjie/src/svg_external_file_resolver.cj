@@ -5,12 +5,12 @@
 package svg
 
 public open class SVGExternalFileResolver {
-    public open func resolveFont(fontFamily: String, fontWeight: Float64, fontStyle: String, fontStretch: Float64): ?Object {
-        return None
+    public open func resolveFont(fontFamily: String, fontWeight: Float64, fontStyle: String, fontStretch: Float64): Object {
+        return Object()
     }
 
-    public open func resolveImage(filename: String): ?Object {
-        return None
+    public open func resolveImage(filename: String): Object {
+        return Object()
     }
 
     public open func resolveCSSStyleSheet(url: String): String {

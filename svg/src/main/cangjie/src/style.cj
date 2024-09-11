@@ -32,7 +32,7 @@ public class Style {
     var textAnchor: String = ""
 
     var overflow: Bool = false // true if overflow visible
-    var clip: CSSClipRect = CSSClipRect()
+    var clip: ?CSSClipRect = None
 
     var markerStart: String = ""
     var markerMid: String = ""
@@ -197,12 +197,64 @@ public class Style {
         if (val.size != 0) {
             if (val != "inherit") {
                 match (CSSBlendMode().fromString(localName)) {
-                    case "fill" => style.specifiedFlags |= 1
-                    case "fill_rule" => style.specifiedFlags |= 2
+                    case "fill" =>
+                        style.fill = parsePaintSpecifier(val)
+                        style.specifiedFlags |= 1
+                    case "fill_rule" =>
+                        style.fillRule = Rule(val)
+                        style.specifiedFlags |= 2
                     case _ => ()
                 }
             }
         }
+    }
+
+    static func parsePaintSpecifier(v: String): SvgPaint {
+        var val: String = v
+        if (val.startsWith("url(")) {
+            let closeBracket: ?Int64 = val.indexOf(")")
+            var href: String
+            if (let Some(v) <- closeBracket) {
+                href = val[4..v].trimAscii()
+                var fallback: SvgPaint = SvgPaint()
+                val = val[(v + 1)..].trimAscii()
+                if (val.size > 0) {
+                    fallback = parseColourSpecifer(val)
+                }
+                return PaintReference(href, fallback)
+            } else {
+                href = val[4..].trimAscii()
+                return PaintReference(href, SvgPaint())
+            }
+        } else {
+            return parseColourSpecifer(val)
+        }
+    }
+
+    private static func parseColourSpecifer(val: String): SvgPaint {
+        match (val) {
+            case "none" => return Colour.TRANSPARENT
+            case "currentColor" => return CurrentColor.getInstance()
+            case _ => try {
+                return parseColour(Color(UInt32.parse(val)))
+            } catch (var4: SVGParseException) {
+                return SvgPaint()
+            }
+        }
+    }
+
+    static func parseFillRule(val: String): String {
+        if ("nonzero" == val) {
+            return FillRule().NonZero
+        }
+        if ("evenodd" == val) {
+            return FillRule().EvenOdd
+        }
+        return ""
+    }
+
+    private static func parseColour(val: Color): Colour {
+        return Colour(val)
     }
 
     func resetNonInheritingProperties(isRootSVG: Bool): Unit {

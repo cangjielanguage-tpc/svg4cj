@@ -118,13 +118,13 @@ class CSSParser {
     private func skipAtRule(scan: CSSTextScanner): Unit {
         var depth: Int64 = 0
         while (!scan.empty()) {
-            let ch = scan.nextChar()
-            if (ch == r';' && depth == 0) {
+            let byte = scan.nextChar()
+            if (byte == b';' && depth == 0) {
                 return
             }
-            if (ch == r'{') {
+            if (byte == b'{') {
                 depth++
-            } else if (ch == r'}' && depth > 0) {
+            } else if (byte == b'}' && depth > 0) {
                 depth--
                 if (depth == 0) {
                     return
@@ -208,7 +208,7 @@ class CSSParser {
         let scan: CSSTextScanner = CSSTextScanner(val)
         var classNameList: ArrayList<String> = ArrayList<String>()
         while (!scan.empty()) {
-            let className = scan.nextToken("", false)
+            let className = scan.nextToken()
             if (className == "") {
                 continue
             }
@@ -259,7 +259,7 @@ class CSSParser {
             if (childPos <= 0) {
                 return false
             }
-            let prevSibling: SvgElementBase = (obj.parent().getChildren()[childPos - 1] as SvgElementBase).getOrThrow()
+            let prevSibling: SvgElementBase = (obj.parent().getChildren()[childPos - 1] as SvgElementBase)()
             return ruleMatch2(ruleMatchContext, selector, selPartPos - 1, ancestors, ancestorsPos, prevSibling)
         }
     }
@@ -385,6 +385,14 @@ class RuleSet {
             }
         }
     }
+
+    public operator func ==(that: RuleSet): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: RuleSet): Bool {
+        return !refEq(this, that)
+    }
 }
 
 class Rule {
@@ -400,7 +408,7 @@ class Rule {
 }
 
 interface PseudoClass {
-    func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool
+    func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool
 }
 
 class PseudoClassNot <: PseudoClass {
@@ -410,10 +418,12 @@ class PseudoClassNot <: PseudoClass {
         this.selectorGroup = selectorGroup
     }
 
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         for (i in 0..this.selectorGroup.size) {
-            if (CSSParser.ruleMatch(ruleMatchContext, this.selectorGroup[i], obj)) {
-                return false
+            if (let Some(v) <- ruleMatchContext) {
+                if (CSSParser.ruleMatch(v, this.selectorGroup[i], obj)) {
+                    return false
+                }
             }
         }
         return true
@@ -431,8 +441,11 @@ class PseudoClassNot <: PseudoClass {
 }
 
 class PseudoClassTarget <: PseudoClass {
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
-        return obj == ruleMatchContext.targetElement
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
+        if (let Some(v) <- ruleMatchContext) {
+            return obj == v.targetElement()
+        }
+        return false
     }
 }
 
@@ -443,7 +456,7 @@ class PseudoClassNotSupported <: PseudoClass {
         this.clazz = clazz
     }
 
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         return false
     }
 }
@@ -463,7 +476,7 @@ class PseudoClassAnPlusB <: PseudoClass {
         this.nodeName = nodeName
     }
 
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         var nodeNameToCheck: String = if (this.isOfType && this.nodeName == "") {
             obj.getNodeName()
         } else {
@@ -545,7 +558,7 @@ class Selector {
 }
 
 class RuleMatchContext {
-    var targetElement: SvgElementBase = SvgElementBase()
+    var targetElement: ?SvgElementBase = None
 }
 
 class Attrib {
@@ -665,7 +678,7 @@ class PseudoClassOnlyChild <: PseudoClass {
         this.nodeName = nodeName
     }
 
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         let nodeNameToCheck: String = if (this.isOfType && this.nodeName == "") {
             obj.getNodeName()
         } else {
@@ -685,16 +698,16 @@ class PseudoClassOnlyChild <: PseudoClass {
 }
 
 class PseudoClassRoot <: PseudoClass {
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         return obj.parent.isNone()
     }
 }
 
 class PseudoClassEmpty <: PseudoClass {
-    public func matches(ruleMatchContext: RuleMatchContext, obj: SvgElementBase): Bool {
+    public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         // @ts-ignore
-        if (obj is SvgContainer) {
-            return (obj as SvgContainer)().getChildren().size == 0
+        if (let Some(obj) <- obj as SvgContainer) {
+            return obj.getChildren().size == 0
         } else {
             return true
         }

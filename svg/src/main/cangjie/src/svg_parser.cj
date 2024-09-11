@@ -5,9 +5,10 @@
 package svg
 
 public interface SVGParser {
+
     func parseString(str: String): SVGBase
 
     func setInternalEntitiesEnabled(enable: Bool): SVGParser
 
-    func setExternalFileResolver(fileResolver: ?SVGExternalFileResolver): SVGParser
+    func setExternalFileResolver(fileResolver: SVGExternalFileResolver): SVGParser
 }

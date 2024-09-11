@@ -13,7 +13,7 @@ class NumberParser {
 
     func parseNumber(input: String, startpos: Int64, len: Int64): Float64 {
         var isNegative: Bool = false
-        var significand: Int64 = 0
+        var significand: Float64 = 0.0
         var numDigits: Int64 = 0
         var numLeadingZeroes: Int64 = 0
         var numTrailingZeroes: Int64 = 0
@@ -31,42 +31,41 @@ class NumberParser {
             return Float64.NaN
         }
 
-        var ch: Rune = input.toRuneArray()[pos]
-        match (ch) {
-            case '-' => isNegative = true
-            case '+' => pos++
+        var byte: Byte = input[pos]
+        match (byte) {
+            case b'-' => isNegative = true
+            case b'+' => pos++
             case _ => ()
         }
 
         sigStart = pos
 
         while (pos < len) {
-            ch = input.toRuneArray()[pos]
-            if (ch == r'0') {
+            byte = input[pos]
+            if (byte == b'0') {
                 if (numDigits == 0) {
                     numLeadingZeroes++
                 } else {
                     numTrailingZeroes++
                 }
-            } else if (ch >= r'1' && ch <= r'9') {
+            } else if (byte >= b'1' && byte <= b'9') {
                 numDigits += numTrailingZeroes
                 while (numTrailingZeroes > 0) {
-                    if (significand > Int64(TOO_BIG_L)) {
+                    if (significand > TOO_BIG_L) {
                         return Float64.NaN
                     }
-                    significand *= 10
+                    significand *= 10.0
                     numTrailingZeroes--
                 }
-
-                if (significand > Int64(TOO_BIG_L)) {
+                if (significand > TOO_BIG_L) {
                     return Float64.NaN
                 }
-                significand = significand * 10 + (Int64.parse(String(ch)) - 0)
+                significand = significand * 10.0 + (Float64(byte))
                 numDigits++
-                if (significand < 0) {
+                if (significand < 0.0) {
                     return Float64.NaN
                 }
-            } else if (ch == r'.') {
+            } else if (byte == b'.') {
                 if (decimalSeen) {
                     break
                 }
@@ -96,8 +95,8 @@ class NumberParser {
         }
 
         if (pos < len) {
-            ch = input.toRuneArray()[pos]
-            if (ch == r'E' || ch == r'e') {
+            byte = input[pos]
+            if (byte == b'E' || byte == b'e') {
                 var expIsNegative: Bool = false
                 var expVal: Int64 = 0
                 var abortExponent: Bool = false
@@ -107,19 +106,10 @@ class NumberParser {
                     return Float64.NaN
                 }
 
-                match (input.toRuneArray()[pos]) {
-                    case '-' => expIsNegative = true
-                    case '+' => pos++
-                    case '0' => ()
-                    case '1' => ()
-                    case '2' => ()
-                    case '3' => ()
-                    case '4' => ()
-                    case '5' => ()
-                    case '6' => ()
-                    case '7' => ()
-                    case '8' => ()
-                    case '9' => ()
+                match (input[pos]) {
+                    case b'-' => expIsNegative = true
+                    case b'+' => pos++
+                    case b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'7' | b'8' | b'9' => ()
                     case _ =>
                         abortExponent = true
                         pos--
@@ -129,12 +119,12 @@ class NumberParser {
                     var expStart: Int64 = pos
 
                     while (pos < len) {
-                        ch = input.toRuneArray()[pos]
-                        if (ch >= r'0' && ch <= r'9') {
+                        byte = input[pos]
+                        if (byte >= b'0' && byte <= b'9') {
                             if (expVal > TOO_BIG_I) {
                                 return Float64.NaN
                             }
-                            expVal = expVal * 10 + (Int64.parse(String(ch)) - 0)
+                            expVal = expVal * 10 + Int64(byte)
                             pos++
                         } else {
                             break
@@ -158,8 +148,8 @@ class NumberParser {
             return Float64.NaN
         }
 
-        var f: Float64 = Float64(significand)
-        if (significand != 0) {
+        var f: Float64 = significand
+        if (significand != 0.0) {
             if (exponent > 0) {
                 f *= positivePowersOf10[exponent]
             } else if (exponent < 0) {

@@ -85,7 +85,7 @@ public class Matrix2D2 {
         return this.ty
     }
 
-    func setValues(a: Float64, b: Float64, c: Float64, d: Float64, tx: Float64, ty: Float64): Matrix2D2 {
+    func setValues(a!: Float64 = 1.0, b!: Float64 = 0.0, c!: Float64 = 0.0, d!: Float64 = 1.0, tx!: Float64 = 0.0, ty!: Float64 = 0.0): Matrix2D2 {
         this.a = a
         this.b = b
         this.c = c
@@ -367,7 +367,7 @@ public class Matrix2D2 {
     }
 
     func copy(matrix: Matrix2D2): Matrix2D2 {
-        return setValues(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty)
+        return setValues(a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, tx: matrix.tx, ty: matrix.ty)
     }
 
     func toString(): String {

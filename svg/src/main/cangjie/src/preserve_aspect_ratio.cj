@@ -72,4 +72,12 @@ public class PreserveAspectRatio {
     static func parsePreserveAspectRatio(val: String): PreserveAspectRatio {
         return PreserveAspectRatio("align", "scale")
     }
+
+    public operator func ==(that: PreserveAspectRatio): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: PreserveAspectRatio): Bool {
+        return !refEq(this, that)
+    }
 }

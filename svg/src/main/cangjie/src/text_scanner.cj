@@ -19,33 +19,33 @@ public open class TextScanner {
         return (this.position == this.inputLength)
     }
 
-    func isWhitespace(c: Rune): Bool {
-        return (c == r' ' || c == r'\n' || c == r'\r' || c == r'\t')
+    func isWhitespace(b: Byte): Bool {
+        return (b == b' ' || b == b'\n' || b == b'\r' || b == b'\t')
     }
 
     public func skipWhitespace(): Unit {
         while (this.position < this.inputLength) {
-            if (!this.isWhitespace(this.input.toRuneArray()[this.position])) {
+            if (!this.isWhitespace(this.input[this.position])) {
                 break
             }
             this.position++
         }
     }
 
-    func isEOL(c: Rune): Bool {
-        return (c == r'\n' || c == r'\r')
+    func isEOL(b: Byte): Bool {
+        return (b == b'\n' || b == b'\r')
     }
 
     public func skipCommaWhitespace(): Bool {
-        this.skipWhitespace()
+        skipWhitespace()
         if (this.position == this.inputLength) {
             return false
         }
-        if (!(this.input.toRuneArray()[this.position] == r',')) {
+        if (!(this.input[this.position] == b',')) {
             return false
         }
         this.position++
-        this.skipWhitespace()
+        skipWhitespace()
         return true
     }
 
@@ -56,38 +56,38 @@ public open class TextScanner {
     }
 
     func nextInteger(withSign: Bool): Int64 {
-        let ip: ?IntegerParser = IntegerParser.parseInt(input, position, inputLength, withSign)
-        if (ip.isNone()) {
+        let ip: IntegerParser = IntegerParser.parseInt(input, position, inputLength, withSign)
+        if (ip == IntegerParser(0, 0)) {
             return 0
         }
-        position = ip().getEndPos()
-        return ip().getValue()
+        position = ip.getEndPos()
+        return ip.getValue()
     }
 
     func possibleNextFloat(): Float64 {
-        this.skipCommaWhitespace()
+        skipCommaWhitespace()
         let val: Float64 = this.numberParser.parseNumber(this.input, this.position, this.inputLength)
         this.position = this.numberParser.getEndPos()
         return val
     }
 
-    func checkedNextFloat(lastRead: Float64): Float64 {
+    func checkedNextFloat(lastRead: Any): Float64 {
         skipCommaWhitespace()
         return nextFloat()
     }
 
-    func nextChar(): Rune {
+    func nextChar(): Byte {
         if (this.position == this.inputLength) {
-            return r' '
+            return b' '
         }
-        let res = this.input.toRuneArray()[this.position]
+        let res = this.input[this.position]
         this.position++
         return res
     }
 
     func nextLength(): SVGLength {
-        let scalar: Float64 = this.nextFloat()
-        let unit: String = this.nextUnit()
+        let scalar: Float64 = nextFloat()
+        let unit: String = nextUnit()
         if (unit == "") {
             return SVGLength(scalar, u: Units.px)
         } else {
@@ -95,30 +95,30 @@ public open class TextScanner {
         }
     }
 
-    func nextFlag(): ?Bool {
+    func nextFlag(): Bool {
         if (this.position == this.inputLength) {
-            return None
+            return false
         }
-        let ch: Rune = this.input.toRuneArray()[this.position]
-        if (ch == r'0' || ch == r'1') {
+        let byte: Byte = this.input[this.position]
+        if (byte == b'0' || byte == b'1') {
             this.position++
-            return (ch == r'1')
+            return (byte == b'1')
         }
-        return None
+        return false
     }
 
-    func checkedNextFlag(lastRead: ?Object): ?Bool {
+    func checkedNextFlag(lastRead: ?Any): Bool {
         if (lastRead.isNone()) {
-            return None
+            return false
         }
-        this.skipCommaWhitespace()
+        skipCommaWhitespace()
         return this.nextFlag()
     }
 
     public func consume(str: String): Bool {
         if (str.size == 1) {
-            let found: Bool = (this.position < this.inputLength && this.input.toRuneArray()[this.position] ==
-                str.toRuneArray()[0])
+            let found: Bool = (this.position < this.inputLength && this.input[this.position] ==
+                str[0])
             if (found) {
                 this.position++
             }
@@ -133,55 +133,55 @@ public open class TextScanner {
         }
     }
 
-    func advanceChar(): Rune {
+    func advanceChar(): Byte {
         if (this.position == this.inputLength) {
-            return r' '
+            return b' '
         }
         this.position++
         if (this.position < this.inputLength) {
-            return input.toRuneArray()[this.position]
+            return input[this.position]
         } else {
-            return r' '
+            return b' '
         }
     }
 
     func nextTokenWithWhitespace(terminator: String): String {
-        return this.nextToken(terminator, true)
+        return nextToken(terminator: terminator, allowWhitespace: true)
     }
 
-    func nextToken(terminator: String, allowWhitespace: Bool): String {
-        if (this.empty()) {
+    func nextToken(terminator!: String = " ", allowWhitespace!: Bool = false): String {
+        if (empty()) {
             return ""
         }
-        var ch: Rune = this.input.toRuneArray()[this.position]
-        if ((!allowWhitespace && this.isWhitespace(ch)) || ch.toString() == terminator) {
+        var byte: Byte = this.input[this.position]
+        if ((!allowWhitespace && isWhitespace(byte)) || byte.toString() == terminator) {
             return ""
         }
         let start: Int64 = this.position
-        ch = this.advanceChar()
-        while (ch != r" ") {
+        byte = advanceChar()
+        while (byte != b' ') {
             0
-            if (ch.toString() == terminator) {
+            if (byte.toString() == terminator) {
                 break
             }
-            if (!allowWhitespace && this.isWhitespace(ch)) {
+            if (!allowWhitespace && this.isWhitespace(byte)) {
                 break
             }
-            ch = this.advanceChar()
+            byte = advanceChar()
         }
         return this.input[start..this.position]
     }
 
     public func nextWord(): String {
-        if (this.empty()) {
+        if (empty()) {
             return ""
         }
         let start: Int64 = this.position
-        var ch: Rune = this.input.toRuneArray()[this.position]
-        if ((ch >= r'A' && ch <= r'Z') || (ch >= r'a' && ch <= r'z')) {
-            ch = this.advanceChar()
-            while ((ch >= r'A' && ch <= r'Z') || (ch >= r'a' && ch <= r'z')) {
-                ch = this.advanceChar()
+        var byte: Byte = this.input[this.position]
+        if ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z')) {
+            byte = advanceChar()
+            while ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z')) {
+                byte = advanceChar()
             }
             return input[start..this.position]
         }
@@ -190,19 +190,19 @@ public open class TextScanner {
     }
 
     func nextFunction(): String {
-        if (this.empty()) {
+        if (empty()) {
             return ""
         }
         let start: Int64 = this.position
-        var ch: Rune = this.input.toRuneArray()[this.position]
-        while ((ch >= r'a' && ch <= r'z') || (ch >= r'A' && ch <= r'Z')) {
-            ch = this.advanceChar()
+        var byte: Byte = this.input[this.position]
+        while ((byte >= b'a' && byte <= b'z') || (byte >= b'A' && byte <= b'Z')) {
+            byte = advanceChar()
         }
         let end: Int64 = this.position
-        while (this.isWhitespace(ch)) {
-            ch = this.advanceChar()
+        while (isWhitespace(byte)) {
+            byte = advanceChar()
         }
-        if (ch == r'(') {
+        if (byte == b'(') {
             this.position++
             return this.input[start..end]
         }
@@ -212,7 +212,7 @@ public open class TextScanner {
 
     func ahead(): String {
         let start: Int64 = this.position
-        while (!this.empty() && !this.isWhitespace(this.input.toRuneArray()[this.position])) {
+        while (!empty() && !isWhitespace(this.input[this.position])) {
             this.position++
         }
         let str: String = this.input[start..this.position]
@@ -221,11 +221,11 @@ public open class TextScanner {
     }
 
     func nextUnit(): String {
-        if (this.empty()) {
+        if (empty()) {
             return ""
         }
-        var ch = this.input.toRuneArray()[this.position]
-        if (ch == r'%') {
+        var byte = this.input[this.position]
+        if (byte == b'%') {
             this.position++
             return Units.percent
         }
@@ -250,26 +250,26 @@ public open class TextScanner {
         if (this.position == this.inputLength) {
             return false
         }
-        let ch: Rune = this.input.toRuneArray()[this.position]
-        return ((ch >= r'a' && ch <= r'z') || (ch >= r'A' && ch <= r'Z'))
+        let byte: Byte = this.input[this.position]
+        return ((byte >= b'a' && byte <= b'z') || (byte >= b'A' && byte <= b'Z'))
     }
 
     public func nextQuotedString(): String {
-        if (this.empty()) {
+        if (empty()) {
             return ""
         }
         let start: Int64 = this.position
-        var ch: Rune = this.input.toRuneArray()[this.position]
-        let endQuote: Rune = ch
-        if (ch != r'\'' && ch != r'"') {
+        var byte: Byte = this.input[this.position]
+        let endQuote: Byte = byte
+        if (byte != b'\'' && byte != b'"') {
             return ""
         }
-        ch = this.advanceChar()
-        while (ch != r' ' && ch != endQuote) {
-            ch = this.advanceChar()
+        byte = advanceChar()
+        while (byte != b' ' && byte != endQuote) {
+            byte = advanceChar()
         }
 
-        if (ch == r' ') {
+        if (byte == b' ') {
             this.position = start
             return ""
         }
@@ -278,7 +278,7 @@ public open class TextScanner {
     }
 
     func restOfText(): String {
-        if (this.empty()) {
+        if (empty()) {
             return ""
         }
         let start: Int64 = this.position

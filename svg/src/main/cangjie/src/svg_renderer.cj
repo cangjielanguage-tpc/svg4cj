@@ -14,14 +14,16 @@ class SVGRenderer {
     public static let LUMINANCE_TO_ALPHA_GREEN: Float64 = 0.7151
     public static let LUMINANCE_TO_ALPHA_BLUE: Float64 = 0.0722
     private var combinedPath: Path2D = Path2D()
+    private var canvas: CanvasImpl
+
+    init(canvas: CanvasImpl, defaultDPI: Float64, externalFileResolver: SVGExternalFileResolver) {
+        this.canvas = canvas
+        this.dpi = defaultDPI
+        this.externalFileResolver = externalFileResolver
+    }
 
     func getCurrentFontSize(): Float64 {
         return this.state.fillPaint.getFontSize().value
-    }
-
-    init(defaultDPI: Float64, externalFileResolver: SVGExternalFileResolver) {
-        this.dpi = defaultDPI
-        this.externalFileResolver = externalFileResolver
     }
 
     func getCurrentFontXHeight(): Float64 {
@@ -40,6 +42,8 @@ class SVGRenderer {
             return this.state.viewPort
         }
     }
+
+    func renderDocument(document: SVGBase, renderOptions: RenderOptionsBase, context: ?AbilityContext): Unit {}
 }
 
 class RendererState {
