@@ -14,7 +14,6 @@ class SimpleAssetResolver <: SVGExternalFileResolver {
         this.assetManager = assetManager
     }
 
-
     public func resolveFont(fontFamily: String, fontWeight: Float64, fontStyle: String, fontStretch: Float64): Object {
         return Object()
     }

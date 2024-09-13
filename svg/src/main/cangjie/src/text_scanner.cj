@@ -85,9 +85,12 @@ public open class TextScanner {
         return res
     }
 
-    func nextLength(): SVGLength {
+    func nextLength(): ?SVGLength {
         let scalar: Float64 = nextFloat()
         let unit: String = nextUnit()
+        if (scalar.isNaN()) {
+        	return None
+        }
         if (unit == "") {
             return SVGLength(scalar, u: Units.px)
         } else {

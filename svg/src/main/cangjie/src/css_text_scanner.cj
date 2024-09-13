@@ -489,8 +489,7 @@ public class CSSTextScanner <: TextScanner {
             arr.append(byte)
             byte = nextChar()
         }
-        let rawArr = unsafe { arr.getRawArray()[..arr.size] }
-        return unsafe { String.fromUtf8Unchecked(rawArr) }
+        return unsafe { String.fromUtf8Unchecked(arr.getRawArray()[..arr.size]) }
     }
 
     private func hexChar(byte: Byte): Int64 {
@@ -583,8 +582,7 @@ public class CSSTextScanner <: TextScanner {
         if (arr.size == 0) {
             return ""
         }
-        let rawArr = unsafe { arr.getRawArray()[..arr.size] }
-        return unsafe { String.fromUtf8Unchecked(rawArr) }
+        return unsafe { String.fromUtf8Unchecked(arr.getRawArray()[..arr.size]) }
     }
 }
 
