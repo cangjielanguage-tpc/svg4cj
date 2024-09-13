@@ -65,16 +65,16 @@ public class SVGBase {
         this.rootElement = rootElement
     }
 
-    func resolveIRI(s: String): SvgObject {
+    func resolveIRI(s: String): ?SvgObject {
         if (s == "") {
-            return SvgObject()
+            return None
         }
         var iri: String = s
         iri = cssQuotedString(iri)
         if (iri.size > 1 && iri.startsWith("#")) {
-            return (getElementById(iri[1..]) as SvgObject)()
+            return getElementById(iri[1..]) as SvgObject
         }
-        return SvgObject()
+        return None
     }
 
     private func cssQuotedString(s: String): String {
@@ -119,7 +119,7 @@ public class SVGBase {
             return (this.rootElement as SvgElementBase)()
         }
         if (this.idToElementMap.contains(id)) {
-            return this.idToElementMap.get(id) ?? SvgElementBase()
+            return this.idToElementMap.get(id)
         }
         let result: ?SvgElementBase = getElementById2((this.rootElement as SvgContainer)(), id)
         if (let Some(v) <- result) {
@@ -143,8 +143,8 @@ public class SVGBase {
                 if (id == childElem.id) {
                     return childElem
                 }
-                if (child is SvgContainer) {
-                    let found: ?SvgElementBase = getElementById2((child as SvgContainer)(), id)
+                if (let Some(child) <- child as SvgContainer) {
+                    let found: ?SvgElementBase = getElementById2(child, id)
                     if (found.isSome()) {
                         return found
                     }
@@ -165,8 +165,8 @@ public class SVGBase {
         if (obj.getNodeName() == nodeName) {
             result.append(obj)
         }
-        if (obj is SvgContainer) {
-            let arr: ArrayList<SvgObject> = (obj as SvgContainer)().getChildren()
+        if (let Some(obj) <- obj as SvgContainer) {
+            let arr: ArrayList<SvgObject> = obj.getChildren()
             for (element in arr) {
                 getElementsByTagName(nodeName, result, element)
             }
@@ -188,12 +188,11 @@ struct Units {
 }
 
 class GradientSpread <: Equatable<GradientSpread> {
-    let pad: String = "pad"
-    let reflect: String = "reflect"
-    let repeat: String = "repeat"
+
+    var val: String = ""
 
     public operator func ==(that: GradientSpread): Bool {
-        return this.pad == that.pad && this.reflect == that.reflect && this.repeat == that.repeat
+        return this.val == that.val
     }
 
     public operator func !=(that: GradientSpread): Bool {
@@ -667,13 +666,13 @@ open class SvgConditionalElement <: SvgElement & SvgConditional {
 }
 
 interface HasTransform {
-    func setTransform(matrix: Matrix2D2): Unit
+    func setTransform(matrix: ?Matrix2D2): Unit
 }
 
 open class Group <: SvgConditionalContainer & HasTransform {
-    var transform: Matrix2D2 = Matrix2D2()
+    var transform: ?Matrix2D2 = None
 
-    public func setTransform(transform: Matrix2D2): Unit {
+    public func setTransform(transform: ?Matrix2D2): Unit {
         this.transform = transform
     }
 
@@ -691,9 +690,9 @@ class Defs <: Group & NotDirectlyRendered {
 }
 
 open class GraphicsElement <: SvgConditionalElement & HasTransform {
-    var transform: Matrix2D2 = Matrix2D2()
+    var transform: ?Matrix2D2 = None
 
-    public func setTransform(transform: Matrix2D2): Unit {
+    public func setTransform(transform: ?Matrix2D2): Unit {
         this.transform = transform
     }
 }
@@ -707,11 +706,11 @@ class A <: Group {
 }
 
 class Use <: Group {
-    let href: String = ""
-    let x: SVGLength = SVGLength()
-    let y: SVGLength = SVGLength()
-    let width: SVGLength = SVGLength()
-    let height: SVGLength = SVGLength()
+    var href: String = ""
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "use"
@@ -719,7 +718,7 @@ class Use <: Group {
 }
 
 class Path2 <: GraphicsElement {
-    var d: PathDefinition = PathDefinition()
+    var d: ?PathDefinition = None
     var pathLength: Float64 = 0.0
 
     public func getNodeName(): String {
@@ -804,17 +803,17 @@ open class TextContainer <: SvgConditionalContainer {
 }
 
 open class TextPositionedContainer <: TextContainer {
-    let x: ArrayList<SVGLength> = ArrayList<SVGLength>()
-    let y: ArrayList<SVGLength> = ArrayList<SVGLength>()
-    let dx: ArrayList<SVGLength> = ArrayList<SVGLength>()
-    let dy: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    var x: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    var y: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    var dx: ArrayList<SVGLength> = ArrayList<SVGLength>()
+    var dy: ArrayList<SVGLength> = ArrayList<SVGLength>()
 }
 
 class Text2 <: TextPositionedContainer & TextRoot & HasTransform {
-    var transform: Matrix2D2 = Matrix2D2()
+    var transform: ?Matrix2D2 = None
     var text: String = ""
 
-    public func setTransform(transform: Matrix2D2): Unit {
+    public func setTransform(transform: ?Matrix2D2): Unit {
         this.transform = transform
     }
 
@@ -825,7 +824,7 @@ class Text2 <: TextPositionedContainer & TextRoot & HasTransform {
 
 class TSpan <: TextPositionedContainer & TextChild {
     private var textRoot: TextRoot = Text2()
-    let text: String = ""
+    var text: String = ""
 
     public func setTextRoot(obj: TextRoot) {
         this.textRoot = obj
@@ -863,7 +862,7 @@ class TextSequence <: SvgObject & TextChild {
 }
 
 class TRef <: TextContainer & TextChild {
-    let href: String = ""
+    var href: String = ""
     private var textRoot: TextRoot = Text2()
 
     public func setTextRoot(obj: TextRoot): Unit {
@@ -880,8 +879,8 @@ class TRef <: TextContainer & TextChild {
 }
 
 class TextPath <: TextContainer & TextChild {
-    let href: String = ""
-    let startOffset: SVGLength = SVGLength()
+    var href: String = ""
+    var startOffset: SVGLength = SVGLength()
     private var textRoot: TextRoot = Text2()
 
     public func setTextRoot(obj: TextRoot): Unit {
@@ -922,10 +921,10 @@ class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
     }
 }
 
-open class GradientElement <: SvgElementBase & SvgContainer {
+open class GradientElement <: SvgElementBase & SvgContainer & Equatable<GradientElement> {
     var children: ArrayList<SvgObject> = ArrayList<SvgObject>()
     var gradientUnitsAreUser: Bool = false
-    var gradientTransform: Matrix2D2 = Matrix2D2()
+    var gradientTransform: ?Matrix2D2 = None
     var spreadMethod: GradientSpread = GradientSpread()
     var href: String = ""
 
@@ -940,10 +939,18 @@ open class GradientElement <: SvgElementBase & SvgContainer {
             throw SVGParseException("Gradient elements cannot contain " + "${elem}" + " elements.")
         }
     }
+
+    public operator func ==(that: GradientElement): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: GradientElement): Bool {
+        return !refEq(this, that)
+    }
 }
 
 class Stop <: SvgElementBase & SvgContainer {
-    let offset: Int64 = 0
+    var offset: Int64 = 0
 
     public func getChildren(): ArrayList<SvgObject> {
         return ArrayList<SvgObject>()
@@ -981,17 +988,17 @@ class SvgRadialGradient <: GradientElement {
 }
 
 class ClipPath <: Group & NotDirectlyRendered {
-    let clipPathUnitsAreUser: Bool = false
+    var clipPathUnitsAreUser: Bool = false
 
     public func getNodeName(): String {
         return "clipPath"
     }
 }
 
-class Pattern <: SvgViewBoxContainer & NotDirectlyRendered {
+class Pattern <: SvgViewBoxContainer & NotDirectlyRendered & Equatable<Pattern> {
     var patternUnitsAreUser: Bool = false
     var patternContentUnitsAreUser: Bool = false
-    var patternTransform: Matrix2D2 = Matrix2D2()
+    var patternTransform: ?Matrix2D2 = None
     var x: SVGLength = SVGLength()
     var y: SVGLength = SVGLength()
     var width: SVGLength = SVGLength()
@@ -1001,19 +1008,27 @@ class Pattern <: SvgViewBoxContainer & NotDirectlyRendered {
     public func getNodeName(): String {
         return "pattern"
     }
+
+    public operator func ==(that: Pattern): Bool {
+        return refEq(this, that)
+    }
+
+    public operator func !=(that: Pattern): Bool {
+        return !refEq(this, that)
+    }
 }
 
 class Image2 <: SvgPreserveAspectRatioContainer & HasTransform {
-    let href: String = ""
-    let x: SVGLength = SVGLength()
-    let y: SVGLength = SVGLength()
-    let width: SVGLength = SVGLength()
-    let height: SVGLength = SVGLength()
-    var transform: Matrix2D2 = Matrix2D2()
+    var href: String = ""
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
+    var transform: ?Matrix2D2 = None
     let translateX: SVGLength = SVGLength()
     let translateY: SVGLength = SVGLength()
 
-    public func setTransform(transform: Matrix2D2): Unit {
+    public func setTransform(transform: ?Matrix2D2): Unit {
         this.transform = transform
     }
 
@@ -1031,13 +1046,13 @@ class View <: SvgViewBoxContainer & NotDirectlyRendered {
 }
 
 class Mask <: SvgConditionalContainer & NotDirectlyRendered {
-    let maskUnitsAreUser: Bool = false
-    let boolean: Bool = false
-    let maskContentUnitsAreUser: Bool = false
-    let x: SVGLength = SVGLength()
-    let y: SVGLength = SVGLength()
-    let width: SVGLength = SVGLength()
-    let height: SVGLength = SVGLength()
+    var maskUnitsAreUser: Bool = false
+    var boolean: Bool = false
+    var maskContentUnitsAreUser: Bool = false
+    var x: SVGLength = SVGLength()
+    var y: SVGLength = SVGLength()
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
 
     public func getNodeName(): String {
         return "mask"
@@ -1058,44 +1073,44 @@ class SolidColor <: SvgElementBase & SvgContainer {
 }
 
 interface PathInterface {
-    func moveTo(x: Int64, y: Int64): Unit
+    func moveTo(x: Float64, y: Float64): Unit
 
-    func lineTo(x: Int64, y: Int64): Unit
+    func lineTo(x: Float64, y: Float64): Unit
 
-    func cubicTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64, x3: Int64, y3: Int64): Unit
+    func cubicTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64, x3: Float64, y3: Float64): Unit
 
-    func quadTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64): Unit
+    func quadTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64): Unit
 
-    func arcTo(rx: Int64, ry: Int64, xAxisRotation: Int64, largeArcFlag: Bool, sweepFlag: Bool, x: Int64, y: Int64): Unit
+    func arcTo(rx: Float64, ry: Float64, xAxisRotation: Float64, largeArcFlag: Bool, sweepFlag: Bool, x: Float64, y: Float64): Unit
 
     func close(): Unit
 }
 
 class PathDefinition <: PathInterface {
-    private var commands: Array<Int64>
+    private var commands: Array<Byte>
     private var commandsLength: Int64 = 0
-    private var coords: Array<Int64>
+    private var coords: Array<Float64>
     private var coordsLength: Int64 = 0
-    private static let MOVETO: Int64 = 0
-    private static let LINETO: Int64 = 1
-    private static let CUBICTO: Int64 = 2
-    private static let QUADTO: Int64 = 3
-    private static let ARCTO: Int64 = 4
-    private static let CLOSE: Int64 = 8
+    private static let MOVETO: Byte = 0
+    private static let LINETO: Byte = 1
+    private static let CUBICTO: Byte = 2
+    private static let QUADTO: Byte = 3
+    private static let ARCTO: Byte = 4
+    private static let CLOSE: Byte = 8
     var d: String = ""
 
     init() {
-        this.commands = Array<Int64>(8, item: 0)
-        this.coords = Array<Int64>(16, item: 0)
+        this.commands = Array<Byte>(8, item: 0)
+        this.coords = Array<Float64>(16, item: 0.0)
     }
 
     func isEmpty(): Bool {
         return this.commandsLength == 0
     }
 
-    private func addCommand(value: Int64): Unit {
+    private func addCommand(value: Byte): Unit {
         if (this.commandsLength == this.commands.size) {
-            let newCommands: Array<Int64> = Array<Int64>(this.commands.size * 2, item: 0)
+            let newCommands: Array<Byte> = Array<Byte>(this.commands.size * 2, item: 0)
             for (i in 0..this.commands.size) {
                 newCommands[i] = this.commands[i]
             }
@@ -1107,7 +1122,7 @@ class PathDefinition <: PathInterface {
 
     private func coordsEnsure(num: Int64): Unit {
         if (this.coords.size < (this.coordsLength + num)) {
-            let newCoords: Array<Int64> = Array<Int64>(this.coords.size * 2, item: 0)
+            let newCoords: Array<Float64> = Array<Float64>(this.coords.size * 2, item: 0.0)
             for (i in 0..this.coords.size) {
                 newCoords[i] = this.coords[i]
             }
@@ -1115,7 +1130,7 @@ class PathDefinition <: PathInterface {
         }
     }
 
-    public func moveTo(x: Int64, y: Int64): Unit {
+    public func moveTo(x: Float64, y: Float64): Unit {
         addCommand(PathDefinition.MOVETO)
         coordsEnsure(2)
         this.coords[this.coordsLength] = x
@@ -1124,7 +1139,7 @@ class PathDefinition <: PathInterface {
         this.coordsLength++
     }
 
-    public func lineTo(x: Int64, y: Int64): Unit {
+    public func lineTo(x: Float64, y: Float64): Unit {
         addCommand(PathDefinition.LINETO)
         coordsEnsure(2)
         this.coords[this.coordsLength] = x
@@ -1133,7 +1148,7 @@ class PathDefinition <: PathInterface {
         this.coordsLength++
     }
 
-    public func cubicTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64, x3: Int64, y3: Int64): Unit {
+    public func cubicTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64, x3: Float64, y3: Float64): Unit {
         addCommand(PathDefinition.CUBICTO)
         coordsEnsure(6)
         this.coords[this.coordsLength] = x1
@@ -1150,7 +1165,7 @@ class PathDefinition <: PathInterface {
         this.coordsLength++
     }
 
-    public func quadTo(x1: Int64, y1: Int64, x2: Int64, y2: Int64): Unit {
+    public func quadTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64): Unit {
         addCommand(PathDefinition.QUADTO)
         coordsEnsure(4)
         this.coords[this.coordsLength] = x1
@@ -1163,9 +1178,9 @@ class PathDefinition <: PathInterface {
         this.coordsLength++
     }
 
-    public func arcTo(rx: Int64, ry: Int64, xAxisRotation: Int64, largeArcFlag: Bool, sweepFlag: Bool, x: Int64,
-        y: Int64): Unit {
-        let arc: Int64 = PathDefinition.ARCTO | if (largeArcFlag) {
+    public func arcTo(rx: Float64, ry: Float64, xAxisRotation: Float64, largeArcFlag: Bool, sweepFlag: Bool, x: Float64,
+        y: Float64): Unit {
+        let arc: Byte = PathDefinition.ARCTO | if (largeArcFlag) {
             2
         } else {
             0
@@ -1195,7 +1210,7 @@ class PathDefinition <: PathInterface {
     func enumeratePath(handler: PathInterface): Unit {
         var coordsPos: Int64 = 0
         for (i in 0..this.commandsLength) {
-            let command: Int64 = this.commands[i]
+            let command: Byte = this.commands[i]
             match (command) {
                 case 0 =>
                     let opt1 = coordsPos
