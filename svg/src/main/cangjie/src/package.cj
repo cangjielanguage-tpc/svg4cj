@@ -27,7 +27,7 @@ internal import ohos.resource_manager.RawFileDescriptor
 internal import ohos.ability.*
 internal import ohos.hilog.*
 internal import ohos.prompt_action.*
-//internal import xml_ffi.*
+internal import xml_ffi.*
 
 extend<T> Option<T> {
     operator func ()(): T {

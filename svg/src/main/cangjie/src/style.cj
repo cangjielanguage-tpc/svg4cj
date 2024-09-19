@@ -146,7 +146,7 @@ public class Style {
         def.fill = Colour.BLACK
         def.fillRule = FillRule().NonZero
         def.fillOpacity = 1.0
-        def.stroke = Colour.BLACK
+        def.stroke = None
         def.strokeOpacity = 1.0
         def.strokeWidth = SVGLength(1.0)
         def.strokeLineCap = LineCap.Butt
@@ -196,7 +196,7 @@ public class Style {
     static func processStyleProperty(style: Style, localName: String, val: String): Unit {
         if (val.size != 0) {
             if (val != "inherit") {
-                match (CSSBlendMode().fromString(localName)) {
+                match (localName) {
                     case "fill" =>
                         style.fill = parsePaintSpecifier(val)
                         if (style.fill.isSome()) {
@@ -262,147 +262,141 @@ public class Style {
                             style.specifiedFlags |= SPECIFIED_FONT_FAMILY
                         }
 
-                    case font_size =>
+                    case "font_size" =>
                         style.fontSize = parseFontSize(val)
                         style.specifiedFlags |= SPECIFIED_FONT_SIZE
-                    case font_weight =>
+                    case "font_weight" =>
                         style.fontWeight = parseFontWeight(val)
                         if (style.fontWeight != 0.0) {
                             style.specifiedFlags |= SPECIFIED_FONT_WEIGHT
                         }
-                    case font_style =>
+                    case "font_style" =>
                         style.fontStyle = parseFontStyle(val)
                         if (style.fontStyle.isSome()) {
                             style.specifiedFlags |= SPECIFIED_FONT_STYLE
                         }
-                    case text_decoration =>
+                    case "text_decoration" =>
                         style.textDecoration = parseTextDecoration(val)
                         if (style.textDecoration != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_DECORATION
                         }
-                    case direction =>
+                    case "direction" =>
                         style.direction = parseTextDirection(val)
                         if (style.direction != "") {
                             style.specifiedFlags |= SPECIFIED_DIRECTION
                         }
 
-                    case text_anchor =>
+                    case "text_anchor" =>
                         style.textAnchor = parseTextAnchor(val)
                         if (style.textAnchor != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_ANCHOR
                         }
 
-                    case overflow =>
+                    case "overflow" =>
                         style.overflow = parseOverflow(val)
                         if (style.overflow != false) {
                             style.specifiedFlags |= SPECIFIED_OVERFLOW
                         }
-                    case marker =>
+                    case "marker" =>
                         style.markerStart = parseFunctionalIRI(val)
                         style.markerMid = style.markerStart
                         style.markerEnd = style.markerStart
                         style.specifiedFlags |= (SPECIFIED_MARKER_START | SPECIFIED_MARKER_MID | SPECIFIED_MARKER_END)
 
-                    case marker_start =>
+                    case "marker_start" =>
                         style.markerStart = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_MARKER_START
 
-                    case marker_mid =>
+                    case "marker_mid" =>
                         style.markerMid = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_MARKER_MID
 
-                    case marker_end =>
+                    case "marker_end" =>
                         style.markerEnd = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_MARKER_END
 
-                    case display => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_DISPLAY_VALUES.contains(
+                    case "display" => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_DISPLAY_VALUES.contains(
                         '|' + val + '|')) {
                         style.display = !(val == "")
                         style.specifiedFlags |= SPECIFIED_DISPLAY
                     }
 
-                    case visibility => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_VISIBILITY_VALUES.contains(
+                    case "visibility" => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_VISIBILITY_VALUES.contains(
                         '|' + val + '|')) {
                         style.visibility = val == ("visible")
                         style.specifiedFlags |= SPECIFIED_VISIBILITY
                     }
 
-                    case stop_color =>
+                    case "stop_color" =>
                         if (val == SVGParserImpl.CURRENTCOLOR) {
                             style.stopColor = CurrentColor.getInstance()
                         } else {
                             try {
                                 style.stopColor = parseColour(Color(UInt32.parse(val)))
                             } catch (e: SVGParseException) {
-                                // Error: Ignore property
-                                AppLog.error(e.message)
                             }
                         }
                         style.specifiedFlags |= SPECIFIED_STOP_COLOR
 
-                    case stop_opacity =>
+                    case "stop_opacity" =>
                         style.stopOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_STOP_OPACITY
 
-                    case clip =>
+                    case "clip" =>
                         style.clip = parseClip(val)
                         if (style.clip.isSome()) {
                             style.specifiedFlags |= SPECIFIED_CLIP
                         }
 
-                    case clip_path =>
+                    case "clip_path" =>
                         style.clipPath = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_CLIP_PATH
 
-                    case clip_rule =>
+                    case "clip_rule" =>
                         style.clipRule = parseFillRule(val)
                         style.specifiedFlags |= SPECIFIED_CLIP_RULE
 
-                    case mask =>
+                    case "mask" =>
                         style.mask = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_MASK
 
-                    case solid_color =>
+                    case "solid_color" =>
                         if (val == SVGParserImpl.CURRENTCOLOR) {
                             style.solidColor = CurrentColor.getInstance()
                         } else {
                             try {
                                 style.solidColor = parseColour(Color(UInt32.parse(val)))
                             } catch (e: SVGParseException) {
-                                // Error: Ignore property
-                                AppLog.error(e.message)
                             }
                         }
                         style.specifiedFlags |= SPECIFIED_SOLID_COLOR
 
-                    case solid_opacity =>
+                    case "solid_opacity" =>
                         style.solidOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_SOLID_OPACITY
 
-                    case viewport_fill =>
+                    case "viewport_fill" =>
                         if (val == SVGParserImpl.CURRENTCOLOR) {
                             style.viewportFill = CurrentColor.getInstance()
                         } else {
                             try {
                                 style.viewportFill = parseColour(Color(UInt32.parse(val)))
                             } catch (e: SVGParseException) {
-                                // Error: Ignore property
-                                AppLog.error(e.message)
                             }
                         }
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL
 
-                    case viewport_fill_opacity =>
+                    case "viewport_fill_opacity" =>
                         style.viewportFillOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL_OPACITY
 
-                    case vector_effect =>
+                    case "vector_effect" =>
                         style.vectorEffect = parseVectorEffect(val)
                         if (style.vectorEffect != "") {
                             style.specifiedFlags |= SPECIFIED_VECTOR_EFFECT
                         }
 
-                    case image_rendering =>
+                    case "image_rendering" =>
                         style.imageRendering = parseRenderQuality(val)
                         if (style.imageRendering != "") {
                             style.specifiedFlags |= SPECIFIED_IMAGE_RENDERING
