@@ -6,6 +6,7 @@
 
 [dependencies]
   cj_res_svg = {path = "./cj_res", version = "1.0.0"}
+  xml_ffi = {branch = "add_lib", git = "https://gitcode.com/Cangjie-TPC/xml-ffi.git"}
 
 [package]
   cjc-version = "0.53.8"

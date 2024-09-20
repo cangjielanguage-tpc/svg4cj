@@ -29,7 +29,6 @@ class testImage {
                 Image(@r(app.media.circle))
                 .width(300)
                 .height(200)
-//                .objectFit(ImageFit.None)
             }
         }
         .width(100.percent)

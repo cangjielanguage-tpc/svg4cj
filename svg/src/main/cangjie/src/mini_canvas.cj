@@ -335,8 +335,6 @@ public class CanvasImpl <: ICanvas {
     public func drawLine(startX: Float64, startY: Float64, stopX: Float64, stopY: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawLineInternal(this.context, startX, startY, stopX, stopY, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -352,8 +350,6 @@ public class CanvasImpl <: ICanvas {
     public func drawText(text: String, x: Float64, y: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawTextInternal(this.context, text, x, y, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -371,8 +367,6 @@ public class CanvasImpl <: ICanvas {
     public func drawCircle(x: Float64, y: Float64, radius: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawCircleInternal(this.context, x, y, radius, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -387,8 +381,6 @@ public class CanvasImpl <: ICanvas {
     public func drawOval(x: Float64, y: Float64, width: Float64, height: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawOvalInternal(this.context, x, y, width, height, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -409,8 +401,6 @@ public class CanvasImpl <: ICanvas {
         counterclockwise: Bool): Unit {
         if (let Some(v) <- paint) {
             drawArcInternal(this.context, x, y, radius, startAngle, endAngle, v, counterclockwise)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -429,8 +419,6 @@ public class CanvasImpl <: ICanvas {
     public func drawRect(x: Float64, y: Float64, width: Float64, height: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawRectInternal(this.context, x, y, width, height, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -448,8 +436,6 @@ public class CanvasImpl <: ICanvas {
     public func drawRoundRect(x: Float64, y: Float64, width: Float64, height: Float64, radius: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawRoundRectInternal(this.context, x, y, width, height, radius, v)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -472,8 +458,6 @@ public class CanvasImpl <: ICanvas {
         dy: Float64, dWidth: Float64, dHeight: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawImageInternal(this.context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -481,8 +465,6 @@ public class CanvasImpl <: ICanvas {
         dy: Float64, dWidth: Float64, dHeight: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
             drawImageInternal(this.context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
@@ -514,8 +496,6 @@ public class CanvasImpl <: ICanvas {
                 }
                 this.context.fill()
             }
-        } else {
-            AppLog.warn("paint invalid")
         }
     }
 
