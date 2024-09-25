@@ -1468,7 +1468,7 @@ public class SVGParserImpl <: SVGParser {
                 || svg == SVGXMLConstants.SVG_IMAGE_TAG || svg == SVGXMLConstants.SVG_TEXT_TAG || svg == SVGXMLConstants.SVG_TSPAN_TAG || svg == SVGXMLConstants.SVG_SWITCH_TAG || svg == SVGXMLConstants.SVG_SYMBOL_TAG
                 || svg == SVGXMLConstants.SVG_MARKER_TAG || svg == SVGXMLConstants.SVG_LINEAR_GRADIENT_TAG || svg == SVGXMLConstants.SVG_RADIAL_GRADIENT_TAG || svg == SVGXMLConstants.SVG_STOP_TAG
                 || svg == SVGXMLConstants.SVG_CLIP_PATH_TAG || svg == SVGXMLConstants.SVG_TEXT_PATH_TAG || svg == SVGXMLConstants.SVG_PATTERN_TAG || svg == SVGXMLConstants.SVG_VIEW_TAG || svg == SVGXMLConstants.SVG_MASK_TAG
-            => if (let Some(v) <- this.currentElement as SvgObject) {
+            => if (let Some(v) <- this.currentElement() as SvgObject) {
                     this.currentElement = v.parent
                 } else {
                     throw SVGParseException("Unbalanced end element </%s> found ${name}")
