@@ -385,14 +385,6 @@ class RuleSet {
             }
         }
     }
-
-    public operator func ==(that: RuleSet): Bool {
-        return refEq(this, that)
-    }
-
-    public operator func !=(that: RuleSet): Bool {
-        return !refEq(this, that)
-    }
 }
 
 class Rule {

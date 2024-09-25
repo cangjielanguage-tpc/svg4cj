@@ -65,28 +65,28 @@ public class MyRect {
         this.bottom = 0.0
     }
 
-    public func set(left: Float64, top: Float64, right: Float64, bottom: Float64) {
+    public func set(left: Float64, top: Float64, right: Float64, bottom: Float64): Unit {
         this.left = left
         this.top = top
         this.right = right
         this.bottom = bottom
     }
 
-    public func offset(dx: Float64, dy: Float64) {
+    public func offset(dx: Float64, dy: Float64): Unit {
         this.left += dx
         this.top += dy
         this.right += dx
         this.bottom += dy
     }
 
-    public func offsetTo(newLeft: Float64, newTop: Float64) {
+    public func offsetTo(newLeft: Float64, newTop: Float64): Unit {
         this.right += newLeft - this.left
         this.bottom += newTop - this.top
         this.left = newLeft
         this.top = newTop
     }
 
-    public func inset(left: Float64, top: Float64, right: Float64, bottom: Float64) {
+    public func inset(left: Float64, top: Float64, right: Float64, bottom: Float64): Unit {
         this.left += left
         this.top += top
         this.right -= right

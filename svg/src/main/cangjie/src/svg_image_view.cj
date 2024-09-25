@@ -8,8 +8,7 @@ import ohos.state_macro_manage.*
 
 @Component
 public class SVGImageView {
-    @State
-    var model: SVGImageViewModel = SVGImageViewModel()
+    @State var model: SVGImageViewModel = SVGImageViewModel()
     private var settings: RenderingContextSettings = RenderingContextSettings(antialias: true)
     private let context2D: CanvasRenderingContext2D = CanvasRenderingContext2D(this.settings)
 
@@ -18,9 +17,9 @@ public class SVGImageView {
             {
                 =>
                 this.model.setContext2D(this.context2D)
-                //                this.model.viewWidth = this.context2D.width
+                //                this.model.viewWidth = this.context2D.width TODO..
                 this.model.viewWidth = 300
-                //                this.model.viewHeight = this.context2D.height
+                //                this.model.viewHeight = this.context2D.height TODO..
                 this.model.viewHeight = 200
                 this.model.doRender(this.model.context, areaChanged: true)
             }
@@ -119,10 +118,10 @@ public class SVGImageViewModel {
                     0.0, unitType: LengthType.px)).value
                 let viewBoxHeight = (px2vp(Length(v.getRootElement().viewBox.height, unitType: LengthType.px)) ??
                     Length(0.0, unitType: LengthType.px)).value
-                let xScale = this.viewWidth / Int32(viewBoxWidth)
-                let yScale = this.viewHeight / Int32(viewBoxHeight)
-                this.scaleX = Float64(min(xScale, yScale))
-                this.scaleY = Float64(min(xScale, yScale))
+                let xScale = Float64(this.viewWidth) / viewBoxWidth
+                let yScale = Float64(this.viewHeight) / viewBoxHeight
+                this.scaleX = min(xScale, yScale)
+                this.scaleY = min(xScale, yScale)
                 this.context2D.scale(this.scaleX, this.scaleY)
                 this.needScale = false
             }

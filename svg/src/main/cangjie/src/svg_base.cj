@@ -296,7 +296,7 @@ public open class SvgViewBoxContainer <: SvgPreserveAspectRatioContainer {
 }
 
 public open class SvgPreserveAspectRatioContainer <: SvgConditionalContainer {
-    var preserveAspectRatio: PreserveAspectRatio = PreserveAspectRatio("", "")
+    var preserveAspectRatio: ?PreserveAspectRatio = None
 }
 
 public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgConditional {
@@ -380,7 +380,7 @@ public open class SvgElementBase <: SvgObject & Equatable<SvgElementBase> {
     var id: String = ""
     var spacePreserve: Bool = false
     var baseStyle: Style = Style()
-    var style: Style = Style()
+    var style: ?Style = Option<Style>.None
     var classNames: ArrayList<String> = ArrayList<String>()
 
     public func toString(): String {
@@ -433,7 +433,7 @@ class Colour <: SvgPaint {
     }
 
     public func toString(): String {
-        return "#%08x ${this.colour.toUInt32()}"
+        return "#%08x ${this.colour.toUInt32().format("x")}"
     }
 }
 
@@ -451,9 +451,9 @@ class CurrentColor <: SvgPaint {
 
 class PaintReference <: SvgPaint {
     var href: String
-    var fallback: SvgPaint
+    var fallback: ?SvgPaint
 
-    init(href: String, fallback: SvgPaint) {
+    init(href: String, fallback: ?SvgPaint) {
         super()
         this.href = href
         this.fallback = fallback
