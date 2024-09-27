@@ -33,7 +33,9 @@ class NumberParser {
 
         var byte: Byte = input[pos]
         match (byte) {
-            case b'-' => isNegative = true
+            case b'-' => 
+                isNegative = true
+                pos++
             case b'+' => pos++
             case _ => ()
         }

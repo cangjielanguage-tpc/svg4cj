@@ -72,7 +72,7 @@ public class SVGBase {
         var iri: String = s
         iri = cssQuotedString(iri)
         if (iri.size > 1 && iri.startsWith("#")) {
-            return getElementById(iri[1..]) as SvgObject
+            return getElementById(iri[1..])() as SvgObject
         }
         return None
     }
