@@ -212,9 +212,9 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     if (sy.isNaN()) {
-                        matrix.scale(sx, sx)
+                        matrix.scale(sx, y: sx)
                     } else {
-                        matrix.scale(sx, sy)
+                        matrix.scale(sx, y: sy)
                     }
                 case "rotate" =>
                     scan.skipWhitespace()
@@ -228,7 +228,7 @@ public class SVGParserImpl <: SVGParser {
                     if (cx.isNaN()) {
                         matrix.rotate(ang)
                     } else if (!cy.isNaN()) {
-                        matrix.rotate(ang, cx, cy)
+                        matrix.rotate(ang, cx: cx, cy: cy)
                     } else {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
@@ -888,8 +888,8 @@ public class SVGParserImpl <: SVGParser {
     }
 
     private func stop(data: XmlElement): Unit {
-        let current = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
-        if (!(current is TextContainer)) {
+        let current: SvgContainer = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
+        if (!(current is GradientElement)) {
             throw SVGParseException(
                 "Invalid document. <stop> elements are only valid inside <linearGradient> or <radialGradient> elements."
             )

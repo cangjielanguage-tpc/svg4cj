@@ -398,7 +398,7 @@ class SVGRenderer {
         if (!rootObj.height.isZero()) {
             viewPort.height = rootObj.height.floatValueBox(this)
         }
-        renderSvg4(rootObj, viewPort, viewBox, preserveAspectRatio(), context)
+        renderSvg4(rootObj, viewPort, viewBox, preserveAspectRatio, context)
         statePop()
         if (renderOptions.hasCss()) {
             document.clearRenderCSSRules()
@@ -431,7 +431,7 @@ class SVGRenderer {
         this.state = this.stateStack.popLast() ?? RendererState()
     }
 
-    private func renderSvg4(obj: Svg, viewPort: Box, viewBox: Box, p: PreserveAspectRatio, context: ?AbilityContext): Unit {
+    private func renderSvg4(obj: Svg, viewPort: Box, viewBox: Box, p: ?PreserveAspectRatio, context: ?AbilityContext): Unit {
         var positioning = p
         if (viewPort.width == 0.0 || viewPort.height == 0.0) {
             return
@@ -452,7 +452,7 @@ class SVGRenderer {
         }
         checkForClipPath(obj, boundingBox: this.state.viewPort)
         if (viewBox != Box(0.0, 0.0, 0.0, 0.0)) {
-            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, viewBox, positioning))
+            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, viewBox, positioning()))
             this.state.viewBox = obj.viewBox
         } else {
             this.canvas.translate(this.state.viewPort.minX, this.state.viewPort.minY, Paint())
@@ -522,7 +522,7 @@ class SVGRenderer {
         let m: Matrix2D2 = Matrix2D2()
         if (!userUnits) {
             m.translate(boundingBox.minX, y: boundingBox.minY)
-            m.scale(boundingBox.width, boundingBox.height)
+            m.scale(boundingBox.width, y: boundingBox.height)
         }
         if (let Some(v) <- clipPath.transform) {
             m.append(v.a, v.b, v.c, v.d, v.tx, v.ty)
@@ -558,7 +558,7 @@ class SVGRenderer {
         var yOffset = -viewBox.minY
         if (positioning == PreserveAspectRatio.STRETCH) {
             m.translate(viewPort.minX, y: viewPort.minY)
-            m.scale(xScale, yScale)
+            m.scale(xScale, y: yScale)
             m.translate(xOffset, y: yOffset)
             return m
         }
@@ -595,7 +595,7 @@ class SVGRenderer {
             }
         }
         m.translate(viewPort.minX, y: viewPort.minY)
-        m.scale(scale, scale)
+        m.scale(scale, y: scale)
         m.translate(xOffset, y: yOffset)
         return m
     }
@@ -888,7 +888,7 @@ class SVGRenderer {
         let m: Matrix2D2 = Matrix2D2()
         if (!userUnits && boundingBox != Box(0.0, 0.0, 0.0, 0.0)) {
             m.translate(boundingBox.minX, y: boundingBox.minY)
-            m.scale(boundingBox.width, boundingBox.height)
+            m.scale(boundingBox.width, y: boundingBox.height)
         }
         if (let Some(v) <- gradient.gradientTransform) {
             m.append(v.a, v.b, v.c, v.d, v.tx, v.ty)
@@ -1077,7 +1077,7 @@ class SVGRenderer {
         let m = Matrix2D2()
         if (!userUnits) {
             m.translate(boundingBox.minX, y: boundingBox.minY)
-            m.scale(boundingBox.width, boundingBox.height)
+            m.scale(boundingBox.width, y: boundingBox.height)
         }
         if (let Some(v) <- gradient.gradientTransform) {
             m.append(v.a, v.b, v.c, v.d, v.tx, v.ty)
@@ -1866,7 +1866,7 @@ class SVGRenderer {
          angleStart = Float64(Int64(angleStart) % Int64(TWO_PI))
          var bezierPoints = arcToBeziers(angleStart, angleExtent)
          let m = Matrix2D2()
-         m.scale(rx, ry)
+         m.scale(rx, y: ry)
          m.rotate(Float64(angle))
          m.translate(cx, y: cy)
          m.append(bezierPoints[0], bezierPoints[1], bezierPoints[2], bezierPoints[3], bezierPoints[4], bezierPoints[5])
@@ -2494,7 +2494,7 @@ class SVGRenderer {
          let m: Matrix2D2 = Matrix2D2()
          m.translate(pos.x, y: pos.y)
          m.rotate(angle)
-         m.scale(unitsScale, unitsScale)
+         m.scale(unitsScale, y: unitsScale)
          let _refX = if (!(marker.refX.isZero())) {
              marker.refX.floatValueX(this)
          } else {
@@ -2566,7 +2566,7 @@ class SVGRenderer {
                  setClipRect(xOffset, yOffset, _markerWidth, _markerHeight)
              }
              m.setValues()
-             m.scale(xScale, yScale)
+             m.scale(xScale, y: yScale)
              this.canvas.concat(m)
          } else {
              m.translate(-_refX, y: -_refY)

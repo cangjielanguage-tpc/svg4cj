@@ -205,22 +205,23 @@ public class Matrix2D2 {
         return this
     }
 
-    func rotate(angle: Float64): Matrix2D2 {
-        return Matrix2D2()
-    }
-
-    func rotate(a: Float64, cx: Float64, cy: Float64): Matrix2D2 {
+    func rotate(a: Float64, cx!: Float64 = Float64.NaN, cy!: Float64 = Float64.NaN): Matrix2D2 {
+        let hasOriginPoint = !cx.isNaN() && !cy.isNaN()
         let angle: Float64 = a * Matrix2D2.DEG_TO_RAD
         let c: Float64 = cos(angle)
         let s: Float64 = sin(angle)
-        translate(cx, y: cy)
+        if (hasOriginPoint) {
+        	translate(cx, y: cy)
+        }
         let a1 = this.a
         let b1 = this.b
         this.a = a1 * c + this.c * s
         this.b = b1 * c + this.d * s
         this.c = -a1 * s + this.c * c
         this.d = -b1 * s + this.d * c
-        translate(-cx, y: -cy)
+        if (hasOriginPoint) {
+        	translate(-cx, y: -cy)
+        }
         return this
     }
 
@@ -241,38 +242,39 @@ public class Matrix2D2 {
         return skew(0.0, skewY)
     }
 
-    func scale(x: Float64): Matrix2D2 {
-        return Matrix2D2()
-    }
-
-    func scale(x: Float64, y: Float64): Matrix2D2 {
-        return Matrix2D2()
-    }
-
-    func scale(x: Float64, cx: Float64, cy: Float64, yz!: Float64 = x): Matrix2D2 {
-        translate(cx, y: cy)
+    func scale(x: Float64, y!: Float64 = Float64.NaN, cx!: Float64 = Float64.NaN, cy!: Float64 = Float64.NaN): Matrix2D2 {
+        var scaleY = y
+        let hasOriginPoint: Bool = !cx.isNaN() && !cy.isNaN()
+        if (scaleY.isNaN()) {
+            scaleY = x
+        }
+        if (hasOriginPoint) {
+            translate(cx, y: cy)
+        }
         this.a *= x
         this.b *= x
-        this.c *= yz
-        this.d *= yz
-        translate(-cx, y: -cy)
+        this.c *= scaleY
+        this.d *= scaleY
+        if (hasOriginPoint) {
+            translate(-cx, y: -cy)
+        }
         return this
     }
 
     func scaleX(x: Float64): Matrix2D2 {
-        return Matrix2D2()
+        return scale(x, y: 1.0)
     }
 
     func scaleX(x: Float64, cx: Float64, cy: Float64): Matrix2D2 {
-        return scale(x, cx, cy, yz: 1.0)
+        return scale(x, y: 1.0, cx: cx, cy: cy)
     }
 
     func scaleY(y: Float64): Matrix2D2 {
-        return Matrix2D2()
+        return scale(1.0, y: y)
     }
 
     func scaleY(y: Float64, cx: Float64, cy: Float64): Matrix2D2 {
-        return scale(1.0, cx, cy, yz: y)
+        return scale(1.0, y: y, cx: cx, cy: cy)
     }
 
     func translate(x: Float64, y!: Float64 = 0.0): Matrix2D2 {
