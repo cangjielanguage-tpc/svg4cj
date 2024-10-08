@@ -18,9 +18,9 @@ public class SVGImageView {
                 =>
                 this.model.setContext2D(this.context2D)
                 //                this.model.viewWidth = this.context2D.width TODO..
-                this.model.viewWidth = 300
+                this.model.viewWidth = 153
                 //                this.model.viewHeight = this.context2D.height TODO..
-                this.model.viewHeight = 200
+                this.model.viewHeight = 360
                 this.model.doRender(this.model.context, areaChanged: true)
             }
         )

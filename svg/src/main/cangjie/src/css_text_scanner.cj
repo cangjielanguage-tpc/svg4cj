@@ -33,10 +33,11 @@ public class CSSTextScanner <: TextScanner {
         if (byte == b'-') {
             byte = advanceChar()
         }
-        if ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte == b'-') || (byte == b'_') || (byte >= 0x80)) {
+        if ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte == b'-') || (byte == b'_') || (byte >=
+            0x80)) {
             byte = advanceChar()
-            while ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte >= b'0' && byte <= b'9') || (byte == b'-') ||
-                    (byte == b'_') || (byte >= 0x80)) {
+            while ((byte >= b'A' && byte <= b'Z') || (byte >= b'a' && byte <= b'z') || (byte >= b'0' && byte <= b'9') ||
+                    (byte == b'-') || (byte == b'_') || (byte >= 0x80)) {
                 byte = advanceChar()
             }
             lastValidPos = position
@@ -429,7 +430,7 @@ public class CSSTextScanner <: TextScanner {
         var start: Int64 = position
         var lastValidPos: Int64 = position
         var byte = input[position]
-        while (byte != b' ' && byte != b'}' && byte != b'!') {
+        while (byte != b' ' && byte != b';' && byte != b'}' && byte != b'!') {
             if (!isWhitespace(byte)) {
                 // don't include an spaces at the end
                 lastValidPos = position + 1
