@@ -51,7 +51,7 @@ public class SVGImageViewModel {
         this.canvas = CanvasImpl(this.context2D)
     }
 
-    public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css) {
+    public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css): Unit {
         if (context.isSome()) {
             this.context = context
         }
@@ -59,7 +59,7 @@ public class SVGImageViewModel {
         doRender(context)
     }
 
-    public func setCSS(css: String, context: ?AbilityContext) {
+    public func setCSS(css: String, context: ?AbilityContext): Unit {
         this.renderOptions.css = css
         if (context.isSome()) {
             this.context = context
@@ -67,7 +67,7 @@ public class SVGImageViewModel {
         doRender(context)
     }
 
-    public func setImageResource(resource: OhosResource, context: ?AbilityContext) {
+    public func setImageResource(resource: OhosResource, context: ?AbilityContext): Unit {
         if (context.isSome()) {
             this.context = context
         }
@@ -82,7 +82,7 @@ public class SVGImageViewModel {
         )
     }
 
-    public func setImageRawfile(filename: String, context: ?AbilityContext) {
+    public func setImageRawfile(filename: String, context: ?AbilityContext): Unit {
         if (context.isSome()) {
             this.context = context
         }
@@ -97,7 +97,7 @@ public class SVGImageViewModel {
         )
     }
 
-    public func setFromString(url: String, context: ?AbilityContext) {
+    public func setFromString(url: String, context: ?AbilityContext): Unit {
         if (context.isSome()) {
             this.context = context
         }
