@@ -157,6 +157,7 @@ public class SVGParserImpl <: SVGParser {
         scan.skipWhitespace()
         while (!scan.empty()) {
             let cmd: String = scan.nextFunction()
+
             if (cmd == "") {
                 return matrix
             }
@@ -263,8 +264,9 @@ public class SVGParserImpl <: SVGParser {
         while (!scan.empty()) {
             scan.skipWhitespace()
             let propertyName: String = scan.nextIdentifier()
+
             scan.skipWhitespace()
-            if (scan.consume("")) {
+            if (scan.consume(";")) {
                 continue
             }
             if (!scan.consume(":")) {
@@ -276,11 +278,12 @@ public class SVGParserImpl <: SVGParser {
                 continue
             }
             scan.skipWhitespace()
-            if (scan.empty() || scan.consume("")) {
+            if (scan.empty() || scan.consume(";")) {
                 if (let Some(v) <- obj.style) {
                     Style.processStyleProperty(v, propertyName, propertyValue)
                 } else {
                     obj.style = Style()
+                    Style.processStyleProperty(obj.style(), propertyName, propertyValue)
                 }
                 scan.skipWhitespace()
             }
@@ -888,7 +891,8 @@ public class SVGParserImpl <: SVGParser {
     }
 
     private func stop(data: XmlElement): Unit {
-        let current: SvgContainer = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
+        let current: SvgContainer = this.currentElement ?? throw SVGParseException(
+            "Invalid document. Root element must be <svg>")
         if (!(current is GradientElement)) {
             throw SVGParseException(
                 "Invalid document. <stop> elements are only valid inside <linearGradient> or <radialGradient> elements."
@@ -1464,15 +1468,19 @@ public class SVGParserImpl <: SVGParser {
                 this.styleElementContents = ""
                 return
             }
-            case svg where svg == SVGXMLConstants.SVG_SVG_TAG || svg == SVGXMLConstants.SVG_G_TAG || svg == SVGXMLConstants.SVG_DEFS_TAG || svg == SVGXMLConstants.SVG_A_TAG || svg == SVGXMLConstants.SVG_USE_TAG
-                || svg == SVGXMLConstants.SVG_IMAGE_TAG || svg == SVGXMLConstants.SVG_TEXT_TAG || svg == SVGXMLConstants.SVG_TSPAN_TAG || svg == SVGXMLConstants.SVG_SWITCH_TAG || svg == SVGXMLConstants.SVG_SYMBOL_TAG
-                || svg == SVGXMLConstants.SVG_MARKER_TAG || svg == SVGXMLConstants.SVG_LINEAR_GRADIENT_TAG || svg == SVGXMLConstants.SVG_RADIAL_GRADIENT_TAG || svg == SVGXMLConstants.SVG_STOP_TAG
-                || svg == SVGXMLConstants.SVG_CLIP_PATH_TAG || svg == SVGXMLConstants.SVG_TEXT_PATH_TAG || svg == SVGXMLConstants.SVG_PATTERN_TAG || svg == SVGXMLConstants.SVG_VIEW_TAG || svg == SVGXMLConstants.SVG_MASK_TAG
-            => if (let Some(v) <- this.currentElement() as SvgObject) {
-                    this.currentElement = v.parent
-                } else {
-                    throw SVGParseException("Unbalanced end element </%s> found ${name}")
-                }
+            case svg where svg == SVGXMLConstants.SVG_SVG_TAG || svg == SVGXMLConstants.SVG_G_TAG || svg ==
+                SVGXMLConstants.SVG_DEFS_TAG || svg == SVGXMLConstants.SVG_A_TAG || svg == SVGXMLConstants.SVG_USE_TAG
+                || svg == SVGXMLConstants.SVG_IMAGE_TAG || svg == SVGXMLConstants.SVG_TEXT_TAG || svg == SVGXMLConstants.
+                SVG_TSPAN_TAG || svg == SVGXMLConstants.SVG_SWITCH_TAG || svg == SVGXMLConstants.SVG_SYMBOL_TAG
+                || svg == SVGXMLConstants.SVG_MARKER_TAG || svg == SVGXMLConstants.SVG_LINEAR_GRADIENT_TAG || svg ==
+                SVGXMLConstants.SVG_RADIAL_GRADIENT_TAG || svg == SVGXMLConstants.SVG_STOP_TAG
+                || svg == SVGXMLConstants.SVG_CLIP_PATH_TAG || svg == SVGXMLConstants.SVG_TEXT_PATH_TAG || svg ==
+                SVGXMLConstants.SVG_PATTERN_TAG || svg == SVGXMLConstants.SVG_VIEW_TAG || svg == SVGXMLConstants.
+                SVG_MASK_TAG => if (let Some(v) <- this.currentElement() as SvgObject) {
+                this.currentElement = v.parent
+            } else {
+                throw SVGParseException("Unbalanced end element </${name}> found")
+            }
             case _ => ()
         }
     }
@@ -1766,15 +1774,19 @@ public class SVGParserImpl <: SVGParser {
             case "none" => return Colour.TRANSPARENT
             case "currentColor" => return CurrentColor.getInstance()
             case _ => try {
-                return parseColour(Color(UInt32.parse(val)))
+                return parseColour(val)
             } catch (var4: SVGParseException) {
                 return SvgPaint()
             }
         }
     }
 
-    private static func parseColour(val: Color): Colour {
-        return Colour(val)
+    static func parseColour(val: String): Colour {
+        if (val.startsWith("#") && val.count("#") == 1) {
+            return Colour(Color(UInt32.parse(val.replace("#", "0x"))))
+        } else {
+            return Colour(Color(0x000000))
+        }
     }
 
     static func parseFillRule(val: String): String {

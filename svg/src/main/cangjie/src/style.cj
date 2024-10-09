@@ -253,7 +253,7 @@ public class Style {
                         style.opacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_OPACITY
                     case "color" =>
-                        style.color = parseColour(Color(UInt32.parse(val)))
+                        style.color = SVGParserImpl.parseColour(val)
                         style.specifiedFlags |= SPECIFIED_COLOR
                     case "font" => parseFont(style, val)
                     case "font_family" =>
@@ -321,8 +321,8 @@ public class Style {
                         style.specifiedFlags |= SPECIFIED_DISPLAY
                     }
 
-                    case "visibility" => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_VISIBILITY_VALUES.contains(
-                        '|' + val + '|')) {
+                    case "visibility" => if (val.indexOf('|').isNone() ||
+                        SVGParserImpl.VALID_VISIBILITY_VALUES.contains('|' + val + '|')) {
                         style.visibility = val == ("visible")
                         style.specifiedFlags |= SPECIFIED_VISIBILITY
                     }
@@ -332,7 +332,7 @@ public class Style {
                             style.stopColor = CurrentColor.getInstance()
                         } else {
                             try {
-                                style.stopColor = parseColour(Color(UInt32.parse(val)))
+                                style.stopColor = SVGParserImpl.parseColour(val)
                             } catch (e: SVGParseException) {
                             }
                         }
@@ -365,7 +365,7 @@ public class Style {
                             style.solidColor = CurrentColor.getInstance()
                         } else {
                             try {
-                                style.solidColor = parseColour(Color(UInt32.parse(val)))
+                                style.solidColor = SVGParserImpl.parseColour(val)
                             } catch (e: SVGParseException) {
                             }
                         }
@@ -380,7 +380,7 @@ public class Style {
                             style.viewportFill = CurrentColor.getInstance()
                         } else {
                             try {
-                                style.viewportFill = parseColour(Color(UInt32.parse(val)))
+                                style.viewportFill = SVGParserImpl.parseColour(val)
                             } catch (e: SVGParseException) {
                             }
                         }
@@ -609,7 +609,8 @@ public class Style {
         } else {
             FontStyle.Normal
         }
-        style.specifiedFlags |= (SPECIFIED_FONT_FAMILY | SPECIFIED_FONT_SIZE | SPECIFIED_FONT_WEIGHT | SPECIFIED_FONT_STYLE)
+        style.specifiedFlags |= (SPECIFIED_FONT_FAMILY | SPECIFIED_FONT_SIZE | SPECIFIED_FONT_WEIGHT |
+            SPECIFIED_FONT_STYLE)
     }
 
     static func parseFontSize(val: String): SVGLength {
@@ -740,7 +741,7 @@ public class Style {
             case "none" => return Colour.TRANSPARENT
             case "currentColor" => return CurrentColor.getInstance()
             case _ => try {
-                return parseColour(Color(UInt32.parse(val)))
+                return SVGParserImpl.parseColour(val)
             } catch (var4: SVGParseException) {
                 return SvgPaint()
             }
@@ -755,10 +756,6 @@ public class Style {
             return FillRule().EvenOdd
         }
         return ""
-    }
-
-    private static func parseColour(val: Color): Colour {
-        return Colour(val)
     }
 
     func resetNonInheritingProperties(isRootSVG: Bool): Unit {

@@ -8,13 +8,13 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class RenderSample {
+class RenderNotoEmojiU1f490 {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false
 
     protected override func aboutToAppear() {
-        this.model.setImageRawfile("circle.svg", globalAbilityContext)
+        this.model.setImageRawfile("noto_emoji_u1f490.svg", globalAbilityContext)
     }
 
     func build() {

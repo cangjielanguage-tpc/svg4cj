@@ -33,7 +33,7 @@ class NumberParser {
 
         var byte: Byte = input[pos]
         match (byte) {
-            case b'-' => 
+            case b'-' =>
                 isNegative = true
                 pos++
             case b'+' => pos++
@@ -109,7 +109,9 @@ class NumberParser {
                 }
 
                 match (input[pos]) {
-                    case b'-' => expIsNegative = true
+                    case b'-' =>
+                        pos++
+                        expIsNegative = true
                     case b'+' => pos++
                     case b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'7' | b'8' | b'9' => ()
                     case _ =>

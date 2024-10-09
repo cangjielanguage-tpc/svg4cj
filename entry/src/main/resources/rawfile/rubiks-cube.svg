@@ -1,0 +1,16 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!--Generator: Xara Xtreme (www.xara.com), SVG filter version: 1.0.0.13-->
+<svg stroke-width="20.0" stroke-linejoin="bevel" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink"
+     xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" width="300" height="200"
+     viewBox="0 0 420 410">
+    <defs>
+        <radialGradient id="RadialGradient" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="200"
+                        gradientTransform="matrix(0.00135803 -1 0.503387 0.000457764 -0.002 0.001)">
+            <stop offset="0" stop-color="#ffffff"/>
+            <stop offset="1" stop-color="#ff0000"/>
+        </radialGradient>
+    </defs>
+    <ellipse rx="200.097" ry="300.228" transform="translate(105.09 188.511) rotate(90)" stroke="#ff0000" fill="none"/>
+
+</svg>
