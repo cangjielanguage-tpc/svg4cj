@@ -49,6 +49,10 @@ class Index {
                     => Router.push(url: "testImage")
                 }
 
+                Button("testImage2").fontSize(14).onClick {
+                    => Router.push(url: "testImage2")
+                }
+
                 Button("RenderBox").fontSize(14).onClick {
                     => Router.push(url: "RenderBox")
                 }
@@ -106,6 +110,9 @@ class Index {
                 }
                 Button("RenderCock").fontSize(14).onClick {
                     => Router.push(url: "RenderCock")
+                }
+                Button("getSVGPixelMap").fontSize(14).onClick {
+                    => Router.push(url: "getSVGPixelMap")
                 }
             }.width(100.percent).height(100.percent).backgroundColor(Color(0xFFF1A493))
         }
