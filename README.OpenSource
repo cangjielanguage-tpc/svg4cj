@@ -1,0 +1,11 @@
+﻿[
+    {
+        "Name": "androidsvg",
+        "License": "Apache-2.0 License",
+        "License File": " LICENSE ",
+        "Owner" : "BigBadaboom",
+        "Version Number": "Release_1.4",
+        "Upstream URL": "https://github.com/BigBadaboom/androidsvg",
+        "Description": "SVG rendering library for Android"
+    }
+]

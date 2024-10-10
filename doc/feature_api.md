@@ -1,0 +1,79 @@
+# Svg4cj 特性文档
+
+## 介绍
+
+Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到页面上。它是一个用仓颉语言编写的适用于鸿蒙系统的三方库。
+
+## 1 Svg4cj
+
+### 1.1 Svg4cj
+
+#### 1.1.1 EntryOhos Class API Description
+
+```cangjie
+public class SVGImageViewModel {
+    
+    /*
+     * 构造
+     */
+    public init(): Unit
+    
+    /*
+     * 设置图表绘制的上下文
+     * 
+     * 参数 context2D - 图表绘制的上下文
+     */
+    public func setContext2D(context2D: CanvasRenderingContext2D): Unit
+
+    /*
+     * 设置 SVG 对象
+     * 
+     * 参数 svg - 要传入的自定义 svg 类对象
+     * 参数 context - Ability状态上下文
+     * 参数 css - String 类型的缺省参数，表示传入的渲染可选项内容
+     */
+    public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css): Unit
+
+    /*
+     * 设置渲染可选项
+     * 
+     * 参数 css - 要传入的自定义渲染可选项
+     * 参数 context - Ability状态上下文
+     */
+    public func setCSS(css: String, context: ?AbilityContext): Unit
+    
+    /*
+     * 根据资源对象设置svg 并渲染
+     * 
+     * 参数 resource - Resource对象
+     * 参数 context - Ability状态上下文
+     */
+    public func setImageResource(resource: OhosResource, context: ?AbilityContext): Unit
+    
+    /*
+     * 根据文件对象设置svg 并渲染
+     * 
+     * 参数 filename - 文件地址
+     * 参数 context - Ability状态上下文
+     */
+    public func setImageRawfile(filename: String, context: ?AbilityContext): Unit
+
+    /*
+     * 根据svg String内容设置svg 并渲染
+     * 
+     * 参数 url - svg String内容
+     * 参数 context - Ability状态上下文
+     */
+    public func setFromString(url: String, context: ?AbilityContext): Unit
+    
+    /*
+     * 生成svg类型的PixelMap对象
+     * 
+     * 参数 data - 待生成的数组
+     * 参数 context - Ability状态上下文
+     * 返回值 PixelMap - PixelMap对象
+     */
+    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext): PixelMap
+
+}
+```
