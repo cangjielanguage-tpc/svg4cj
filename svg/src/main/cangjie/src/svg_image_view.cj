@@ -8,7 +8,8 @@ import ohos.state_macro_manage.*
 
 @Component
 public class SVGImageView {
-    @State var model: SVGImageViewModel = SVGImageViewModel()
+    @State
+    var model: SVGImageViewModel = SVGImageViewModel()
     private var settings: RenderingContextSettings = RenderingContextSettings(antialias: true)
     private let context2D: CanvasRenderingContext2D = CanvasRenderingContext2D(this.settings)
 

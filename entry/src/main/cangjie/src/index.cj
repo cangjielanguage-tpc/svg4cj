@@ -21,7 +21,26 @@ class Index {
                     this.initData()
                     Router.push(url: "SetFromStringSample")
                 }
-
+                Button("SetImageResourceSample").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetImageResourceSample")
+                }
+                Button("SetSvgSample").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetSvgSample")
+                }
+                Button("SetCssSample").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetCssSample")
+                }
+                Button("SetCssSample2").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetCssSample2")
+                }
                 Button("RenderDoodle7").fontSize(14).onClick {
                     => Router.push(url: "RenderDoodle7")
                 }

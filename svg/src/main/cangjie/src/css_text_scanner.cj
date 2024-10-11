@@ -50,7 +50,7 @@ public class CSSTextScanner <: TextScanner {
         if (empty()) {
             return ArrayList<Selector>()
         }
-        let selectorGroup: ArrayList<Selector> = ArrayList<Selector>(1)
+        let selectorGroup: ArrayList<Selector> = ArrayList<Selector>()
         var selector: Selector = Selector()
         while (!empty()) {
             if (nextSimpleSelector(selector)) {
@@ -176,6 +176,7 @@ public class CSSTextScanner <: TextScanner {
             selector.add(selectorPart())
             return true
         }
+
         position = start
         return false
     }
