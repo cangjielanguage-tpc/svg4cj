@@ -319,10 +319,10 @@ class CSSParser {
             for (i in 0..count) {
                 let attr: Attrib = sel.attribs[i]
                 match (attr.name) {
-                    case ID => if (attr.value != obj.id) {
+                    case "id" => if (attr.value != obj.id) {
                         return false
                     }
-                    case CLASS =>
+                    case "class" =>
                         if (obj.classNames.isEmpty()) {
                             return false
                         }
@@ -379,9 +379,9 @@ class RuleSet {
     }
 
     func removeFromSource(sourceToBeRemoved: Source) {
-        for (i in 0..this.rules.size) {
+        for (i in this.rules.size - 1..=0 : -1) {
             if (this.rules[i].source == sourceToBeRemoved) {
-                this.rules.slice(i..1)
+                this.rules.remove(i)
             }
         }
     }

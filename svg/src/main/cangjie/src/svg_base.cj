@@ -30,7 +30,7 @@ public class SVGBase {
 
     public static func getFromResource(media: OhosResource, callback: (SVGBase) -> Unit, abilityContext: AbilityContext): Unit {
         let resourceManager = ResourceManager.getResourceManager(getStageContext(abilityContext))
-        let value: Array<UInt8> = resourceManager.getMediaContent(media, 100)
+        let value: Array<UInt8> = resourceManager.getMediaContent(media, 0)
         let data = String.fromUtf8(value)
         let svgBase = getFromString(data)
         callback(svgBase)
