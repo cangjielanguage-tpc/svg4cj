@@ -138,27 +138,37 @@ public class SVGImageViewModel {
             this.context = context
         }
         this.svg = SVG.getFromString(String.fromUtf8(data))
-        let setTings: RenderingContextSettings = RenderingContextSettings(antialias: true)
         let svgRootElement = this.svg().getRootElement()
         // 根据屏幕分辨率适配
-        let targetCompWidth: Int32 = this.viewWidth * Int32((px2vp(Length(1.0, unitType: LengthType.px)) ?? Length(0.0,
-            unitType: LengthType.px)).value)
-        let targetCompHeight: Int32 = this.viewHeight * Int32((px2vp(Length(1.0, unitType: LengthType.px)) ?? Length(
-            0.0, unitType: LengthType.px)).value)
-        let Canvascontext2D: CanvasRenderingContext2D = CanvasRenderingContext2D(setTings)
+        let targetCompWidth: Float64 = if (let Some(v) <- px2vp(Length(1.0, unitType: LengthType.px))) {
+            Float64(this.viewWidth) * v.value
+        } else {
+            0.0
+        }
+        let targetCompHeight: Float64 = if (let Some(v) <- px2vp(Length(1.0, unitType: LengthType.px))) {
+            Float64(this.viewHeight) * v.value
+        } else {
+            0.0
+        }
         var minScale: Float64 = 1.0
-        let scaleW = targetCompWidth / Int32((svgRootElement.viewBox.width * 1.0))
-        let scaleH = targetCompHeight / Int32((svgRootElement.viewBox.height * 1.0))
-        minScale = Float64(min(Int64(scaleW), Int64(scaleH))) // 选择较小的缩放比例以确保完全适应目标尺寸
-        Canvascontext2D.setTransform(minScale, 0.0, 0.0, minScale, 0.0, 0.0)
+        let scaleW: Float64 = targetCompWidth / svgRootElement.viewBox.width * 1.0
+        let scaleH: Float64 = targetCompHeight / svgRootElement.viewBox.height * 1.0
+        minScale = min(scaleW, scaleH) // 选择较小的缩放比例以确保完全适应目标尺寸
+        this.context2D.setTransform(minScale, 0.0, 0.0, minScale, 0.0, 0.0)
         this.render = SVGRenderer(this.canvas, this.svg().base.renderDPI, this.svg().base.externalFileResolver)
-        this.render().renderDocument(this.svg().base, this.renderOptions, context)
-        let minShowWidth: Float64 = svgRootElement.viewBox.width * (px2vp(Length(1.0, unitType: LengthType.px)) ??
-            Length(0.0, unitType: LengthType.px)).value * minScale
-        let minShowHeight: Float64 = svgRootElement.viewBox.height * (px2vp(Length(1.0, unitType: LengthType.px)) ??
-            Length(0.0, unitType: LengthType.px)).value * minScale
-        let pix = Canvascontext2D.getPixelMap(0.0, 0.0, minShowWidth, minShowHeight)
-        Canvascontext2D.clearRect(0.0, 0.0, minShowWidth, minShowHeight)
+        this.render().renderDocument(this.svg().base, this.renderOptions, this.context)
+        let minShowWidth: Float64 = if (let Some(v) <- px2vp(Length(1.0, unitType: LengthType.px))) {
+            svgRootElement.viewBox.width * v.value * minScale
+        } else {
+            0.0
+        }
+        let minShowHeight: Float64 = if (let Some(v) <- px2vp(Length(1.0, unitType: LengthType.px))) {
+            svgRootElement.viewBox.height * v.value * minScale
+        } else {
+            0.0
+        }
+        let pix = this.context2D.getPixelMap(0.0, 0.0, minShowWidth, minShowHeight)
+        this.context2D.clearRect(0.0, 0.0, minShowWidth, minShowHeight)
         return pix
     }
 }
