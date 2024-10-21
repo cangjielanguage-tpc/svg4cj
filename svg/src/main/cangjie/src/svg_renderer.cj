@@ -4,7 +4,7 @@
 
 package svg
 
-class SVGRenderer {
+public class SVGRenderer {
     private static let PATTERN_TABS_OR_LINE_BREAKS: Regex = Regex("[\\n\\t]")
     private static let PATTERN_TABS: Regex = Regex("\\t")
     private static let PATTERN_LINE_BREAKS: Regex = Regex("\\n")
@@ -338,70 +338,74 @@ class SVGRenderer {
         }
     }
 
-    func renderDocument(document: SVGBase, renderOptions: RenderOptionsBase, context: ?AbilityContext): Unit {
-        this.document = document
-        let rootObj: Svg = document.getRootElement()
-        var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
-        var preserveAspectRatio: ?PreserveAspectRatio = None
-        if (renderOptions.hasView()) {
-            let obj: ?SvgElementBase = this.document().getElementById(renderOptions.viewId)
-            if (let Some(v) <- obj) {
-                if (!(v is View)) {
-                    return
+    func renderDocument(document: SVGBase, renderOptions: RenderOptionsBase, context: ?AbilityContext): Future<Unit> {
+        spawn {
+            this.document = document
+            let rootObj: Svg = document.getRootElement()
+            var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
+            var preserveAspectRatio: ?PreserveAspectRatio = None
+            if (renderOptions.hasView()) {
+                let obj: ?SvgElementBase = this.document().getElementById(renderOptions.viewId)
+                if (let Some(v) <- obj) {
+                    if (!(v is View)) {
+                        return
+                    }
+                    if (let Some(view) <- v as View) {
+                        viewBox = view.viewBox
+                        preserveAspectRatio = view.preserveAspectRatio
+                    } else {
+                        return
+                    }
                 }
-                if (let Some(view) <- v as View) {
-                    viewBox = view.viewBox
-                    preserveAspectRatio = view.preserveAspectRatio
+            } else {
+                viewBox = if (renderOptions.hasViewBox()) {
+                    renderOptions.viewBox
                 } else {
-                    return
+                    rootObj.viewBox
+                }
+                preserveAspectRatio = if (renderOptions.hasPreserveAspectRatio()) {
+                    renderOptions.preserveAspectRatio
+                } else {
+                    rootObj.preserveAspectRatio
                 }
             }
-        } else {
-            viewBox = if (renderOptions.hasViewBox()) {
-                renderOptions.viewBox
-            } else {
-                rootObj.viewBox
-            }
-            preserveAspectRatio = if (renderOptions.hasPreserveAspectRatio()) {
-                renderOptions.preserveAspectRatio
-            } else {
-                rootObj.preserveAspectRatio
-            }
-        }
 
-        if (renderOptions.hasCss()) {
-            if (renderOptions.css != "") {
-                let parser: CSSParser = CSSParser(source: Source.RenderOptions, externalFileResolver: this.externalFileResolver)
-                document.addCSSRules(parser.parse(renderOptions.css))
-            } else if (let Some(v) <- renderOptions.cssRuleset) {
-                document.addCSSRules(v)
+            if (renderOptions.hasCss()) {
+                if (renderOptions.css != "") {
+                    let parser: CSSParser = CSSParser(source: Source.RenderOptions,
+                        externalFileResolver: this.externalFileResolver)
+                    document.addCSSRules(parser.parse(renderOptions.css))
+                } else if (let Some(v) <- renderOptions.cssRuleset) {
+                    document.addCSSRules(v)
+                }
             }
-        }
-        if (renderOptions.hasTarget()) {
-            this.ruleMatchContext = RuleMatchContext()
-            this.ruleMatchContext.targetElement = document.getElementById(renderOptions.targetId)
-        }
-        resetState()
-        checkXMLSpaceAttribute(rootObj)
-        statePush(isRootContext: true)
-        var viewPort: Box
-        if (renderOptions.hasViewPort()) {
-            let optValue = renderOptions.viewPort
-            viewPort = Box(optValue.minX, optValue.minY, optValue.width, optValue.height)
-        } else {
-            viewPort = Box(rootObj.viewBox.minX, rootObj.viewBox.minY, rootObj.viewBox.width, rootObj.viewBox.height)
-        }
-        if (!rootObj.width.isZero()) {
-            viewPort.width = rootObj.width.floatValueBox(this)
-        }
+            if (renderOptions.hasTarget()) {
+                this.ruleMatchContext = RuleMatchContext()
+                this.ruleMatchContext.targetElement = document.getElementById(renderOptions.targetId)
+            }
+            resetState()
+            checkXMLSpaceAttribute(rootObj)
+            statePush(isRootContext: true)
+            var viewPort: Box
+            if (renderOptions.hasViewPort()) {
+                let optValue = renderOptions.viewPort
+                viewPort = Box(optValue.minX, optValue.minY, optValue.width, optValue.height)
+            } else {
+                viewPort = Box(rootObj.viewBox.minX, rootObj.viewBox.minY, rootObj.viewBox.width, rootObj.viewBox.height
+                )
+            }
+            if (!rootObj.width.isZero()) {
+                viewPort.width = rootObj.width.floatValueBox(this)
+            }
 
-        if (!rootObj.height.isZero()) {
-            viewPort.height = rootObj.height.floatValueBox(this)
-        }
-        renderSvg4(rootObj, viewPort, viewBox, preserveAspectRatio, context)
-        statePop()
-        if (renderOptions.hasCss()) {
-            document.clearRenderCSSRules()
+            if (!rootObj.height.isZero()) {
+                viewPort.height = rootObj.height.floatValueBox(this)
+            }
+            renderSvg4(rootObj, viewPort, viewBox, preserveAspectRatio, context)
+            statePop()
+            if (renderOptions.hasCss()) {
+                document.clearRenderCSSRules()
+            }
         }
     }
 

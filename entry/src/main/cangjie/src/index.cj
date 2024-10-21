@@ -12,10 +12,8 @@ class Index {
     private var menuWidth: Length = 0.percent
 
     func build() {
-        Stack() {
-            Flex(
-                FlexParams(direction: FlexDirection.Column, alignItems: ItemAlign.Center,
-                justifyContent: FlexAlign.SpaceEvenly)) {
+        Scroll() {
+            Column {
                 Button("SetFromStringSample").fontSize(14).onClick {
                     =>
                     this.initData()
@@ -30,6 +28,16 @@ class Index {
                     =>
                     this.initData()
                     Router.push(url: "SetSvgSample")
+                }
+                Button("SetSvgSample2").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetSvgSample2")
+                }
+                Button("SetSvgSample3").fontSize(14).onClick {
+                    =>
+                    this.initData()
+                    Router.push(url: "SetSvgSample3")
                 }
                 Button("SetCssSample").fontSize(14).onClick {
                     =>
@@ -114,8 +122,8 @@ class Index {
                 Button("getSVGPixelMap").fontSize(14).onClick {
                     => Router.push(url: "getSVGPixelMap")
                 }
-            }.width(100.percent).height(100.percent).backgroundColor(Color(0xFFF1A493))
-        }
+            }.width(100.percent).backgroundColor(Color(0xFFF1A493))
+        }.scrollable(ScrollDirection.Vertical)
     }
 
     private func initData(): Unit {

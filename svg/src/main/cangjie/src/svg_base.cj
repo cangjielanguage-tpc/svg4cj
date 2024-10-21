@@ -188,7 +188,6 @@ struct Units {
 }
 
 class GradientSpread <: Equatable<GradientSpread> {
-
     var val: String = ""
 
     public operator func ==(that: GradientSpread): Bool {
@@ -505,29 +504,20 @@ class SVGLength {
         match (this.uni) {
             case "em" => return this.value * renderer.getCurrentFontSize()
             case "ex" => return this.value * renderer.getCurrentFontXHeight()
-            case "in" => return (px2vp(Length(this.value * renderer.getDPI(), unitType: LengthType.px)) ?? Length(0.0,
-                unitType: LengthType.px)).value
-            case "cm" => return (px2vp(Length((this.value * renderer.getDPI() / 2.54), unitType: LengthType.px)) ??
-                Length(0.0, unitType: LengthType.px)).value
-            case "mm" => return (px2vp(Length((this.value * renderer.getDPI() / 25.4), unitType: LengthType.px)) ??
-                Length(0.0, unitType: LengthType.px)).value
-            case "pt" => return (px2vp(Length((this.value * renderer.getDPI() / 72.0), unitType: LengthType.px)) ??
-                Length(0.0, unitType: LengthType.px)).value
-            case "pc" => return (px2vp(Length((this.value * renderer.getDPI() / 6.0), unitType: LengthType.px)) ??
-                Length(0.0, unitType: LengthType.px)).value
+            case "in" => return this.value * renderer.getDPI() / pxTovp
+            case "cm" => return (this.value * renderer.getDPI() / 2.53) / pxTovp
+            case "mm" => return (this.value * renderer.getDPI() / 25.4) / pxTovp
+            case "pt" => return (this.value * renderer.getDPI() / 72.0) / pxTovp
+            case "pc" => return (this.value * renderer.getDPI() / 6.0) / pxTovp
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
                 if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                    return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
-                        value
+                    return this.value / pxTovp
                 } else {
-                    return (px2vp(Length((this.value * viewPortUser.width / 100.0), unitType: LengthType.px)) ?? Length(
-                        0.0, unitType: LengthType.px)).value
+                    return (this.value * viewPortUser.width / 100.0) / pxTovp
                 }
-            case "px" => return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0,
-                unitType: LengthType.px)).value
-            case _ => return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
-                value
+            case "px" => return this.value / pxTovp
+            case _ => return this.value / pxTovp
         }
     }
 
@@ -535,11 +525,9 @@ class SVGLength {
         if (this.uni == Units.percent) {
             let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
             if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                return (px2vp(Length(this.value, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
-                    value
+                return return this.value / pxTovp
             }
-            return (px2vp(Length((this.value * viewPortUser.height / 100.0), unitType: LengthType.px)) ?? Length(0.0,
-                unitType: LengthType.px)).value
+            return return (this.value * viewPortUser.height / 100.0) / pxTovp
         }
         return floatValueX(renderer)
     }
@@ -566,8 +554,7 @@ class SVGLength {
                     return this.value * w / 100.0
                 }
                 let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
-                return (px2vp(Length((this.value * n / 100.0), unitType: LengthType.px)) ?? Length(0.0,
-                    unitType: LengthType.px)).value
+                return (this.value * n / 100.0) / pxTovp
             }
             return floatValueX(renderer)
         }
@@ -1072,7 +1059,7 @@ class SolidColor <: SvgElementBase & SvgContainer {
     }
 }
 
-interface PathInterface {
+public interface PathInterface {
     func moveTo(x: Float64, y: Float64): Unit
 
     func lineTo(x: Float64, y: Float64): Unit
@@ -1081,7 +1068,8 @@ interface PathInterface {
 
     func quadTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64): Unit
 
-    func arcTo(rx: Float64, ry: Float64, xAxisRotation: Float64, largeArcFlag: Bool, sweepFlag: Bool, x: Float64, y: Float64): Unit
+    func arcTo(rx: Float64, ry: Float64, xAxisRotation: Float64, largeArcFlag: Bool, sweepFlag: Bool, x: Float64,
+        y: Float64): Unit
 
     func close(): Unit
 }

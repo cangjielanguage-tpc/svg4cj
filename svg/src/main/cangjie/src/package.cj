@@ -27,8 +27,9 @@ internal import ohos.resource_manager.RawFileDescriptor
 internal import ohos.ability.*
 internal import ohos.hilog.*
 internal import ohos.prompt_action.*
-internal import xml_ffi.*
 internal import std.format.*
+internal import std.io.*
+internal import svg.xml.*
 
 extend<T> Option<T> {
     operator func ()(): T {

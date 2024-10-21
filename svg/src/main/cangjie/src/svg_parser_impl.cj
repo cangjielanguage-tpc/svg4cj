@@ -37,12 +37,17 @@ public class SVGParserImpl <: SVGParser {
             "fill_").replace("stop-", "stop_").replace("clip-", "clip_").replace("marker-", "marker_").replace("xml:",
             "xml_")
         startDocument()
-        let saxParser: XmlParser = XmlParser()
-        let xmlElement: ?XmlElement = saxParser.parse(str)
-        if (let Some(v) <- xmlElement) {
-            startElement(v)
-        } else {
-            throw Exception("parse failed, result is empty")
+        let buf = ByteArrayStream()
+        buf.write(str.toArray())
+        let parser: StaxXmlPullParser = StaxXmlPullParser(buf)
+        while (parser.getEventType() != XmlPullParserEvent.END_DOCUMENT) {
+            let event = parser.next()
+            match (event) {
+                case START_ELEMENT => startElement(parser)
+                case END_ELEMENT => endElement(parser.getName())
+                case OTHER => ()
+                case _ => ()
+            }
         }
         return this.svgDocument()
     }
@@ -57,57 +62,56 @@ public class SVGParserImpl <: SVGParser {
         return this
     }
 
-    func text(data: XmlElement): Unit {
+    func text(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Text2 = Text2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesTextPosition(obj, data.attributes)
-        parseElementsOfText(obj, data.childrenElements)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesTextPosition(obj, data)
+        parseElementsOfText(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseElementsOfText(svg: Text2, elements: ArrayList<XmlElement>): Unit {
-        if (elements.isEmpty()) {
+    private func parseElementsOfText(svg: Text2, data: StaxXmlPullParser): Unit {
+        if (data.getAttributeCount() <= 0) {
             return
         }
-        for (ele in elements) {
-            match (ele.name) {
-                case "text" => svg.text = ele.content
+        for (i in 0..data.getAttributeCount()) {
+            match (data.getAttributeName(i)) {
+                case "text" => svg.text = data.getAttributeValue(i)
                 case _ => ()
             }
         }
     }
 
-    private func parseElementsOfTSpan(svg: TSpan, elements: ArrayList<XmlElement>): Unit {
-        if (elements.isEmpty()) {
+    private func parseElementsOfTSpan(svg: TSpan, data: StaxXmlPullParser): Unit {
+        if (data.getAttributeCount() <= 0) {
             return
         }
-        for (ele in elements) {
-            match (ele.name) {
-                case "text" => svg.text = ele.content
+        for (i in 0..data.getAttributeCount()) {
+            match (data.getAttributeName(i)) {
+                case "text" => svg.text = data.getAttributeValue(i)
                 case _ => ()
             }
         }
     }
 
-    private func parseAttributesCore(obj: SvgElementBase, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let qname: String = attribute.name
+    private func parseAttributesCore(obj: SvgElementBase, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let qname: String = data.getAttributeName(i)
             if (qname == "id" || qname == "xml:id") {
-                obj.id = attribute.content.trimAscii()
+                obj.id = data.getAttributeValue(i).trimAscii()
                 break
             }
             if (qname == "xml:space") {
-                let val: String = attribute.content.trimAscii()
+                let val: String = data.getAttributeValue(i).trimAscii()
                 if ("default" == val) {
                     obj.spacePreserve = false
                 } else {
@@ -121,32 +125,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func parseAttributesStyle(obj: SvgElementBase, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content.trimAscii()
+    private func parseAttributesStyle(obj: SvgElementBase, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i).trimAscii()
             if (val.size == 0) {
                 continue
             }
-            match (attribute.name) {
+            match (data.getAttributeName(i)) {
                 case "style" => parseStyle(obj, val)
                 case "class" => obj.classNames = CSSParser.parseClassAttribute(val)
-                case _ => Style.processStyleProperty(obj.baseStyle, attribute.name, attribute.content.trimAscii())
+                case _ => Style.processStyleProperty(obj.baseStyle, data.getAttributeName(i),
+                    data.getAttributeValue(i).trimAscii())
             }
         }
     }
 
-    private func parseAttributesChild(eles: ArrayList<XmlElement>): Unit {
-        if (!eles.isEmpty()) {
-            for (element in eles) {
-                startElement(element)
-            }
-        }
-    }
-
-    private func parseAttributesTransform(obj: HasTransform, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            if (attribute.name == "transform") {
-                obj.setTransform(parseTransformList(attribute.content))
+    private func parseAttributesTransform(obj: HasTransform, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            if (data.getAttributeName(i) == "transform") {
+                obj.setTransform(parseTransformList(data.getAttributeValue(i)))
             }
         }
     }
@@ -180,9 +177,7 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     let m: Matrix2D2 = Matrix2D2()
-                    m.setValues(a: a, b: c, c: e, d: b,
-                        tx: (px2vp(Length(d, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).value,
-                        ty: (px2vp(Length(f, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).value)
+                    m.setValues(a: a, b: c, c: e, d: b, tx: d / pxTovp, ty: f / pxTovp)
                     matrix.appendMatrix(m)
                 case "translate" =>
                     scan.skipWhitespace()
@@ -193,16 +188,9 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     if (ty.isNaN()) {
-                        matrix.translate(
-                            (px2vp(Length(tx, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).value,
-                            y: 0.0
-                        )
+                        matrix.translate(tx / pxTovp, y: 0.0)
                     } else {
-                        matrix.translate(
-                            (px2vp(Length(tx, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).value,
-                            y: (px2vp(Length(ty, unitType: LengthType.px)) ?? Length(0.0, unitType: LengthType.px)).
-                                value
-                        )
+                        matrix.translate(tx / pxTovp, y: ty / pxTovp)
                     }
                 case "scale" =>
                     scan.skipWhitespace()
@@ -294,102 +282,97 @@ public class SVGParserImpl <: SVGParser {
         this.svgDocument = SVGBase(this.enableInternalEntities, this.externalFileResolver)
     }
 
-    private func svg(data: XmlElement): Unit {
+    private func svg(data: StaxXmlPullParser): Unit {
         let obj: Svg = Svg()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesSVG(obj, data.attributes)
-        parseAttributesViewBox(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesSVG(obj, data)
+        parseAttributesViewBox(obj, data)
         if (let Some(v) <- this.currentElement) {
             v.addChild(obj)
         } else {
             this.svgDocument().setRootElement(obj)
         }
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func g(data: XmlElement): Unit {
+    private func g(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Group = Group()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func defs(data: XmlElement): Unit {
+    private func defs(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Defs = Defs()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func a(data: XmlElement): Unit {
+    private func a(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: A = A()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesA(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesA(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesA(obj: A, attributes: ArrayList<XmlAttr>) {
-        for (attribute in attributes) {
-            match (attribute.name) {
-                case "href" => obj.href = attribute.content
+    private func parseAttributesA(obj: A, data: StaxXmlPullParser) {
+        for (i in 0..data.getAttributeCount()) {
+            match (data.getAttributeName(i)) {
+                case "href" => obj.href = data.getAttributeValue(i)
                 case _ => ()
             }
         }
     }
 
-    private func use(data: XmlElement) {
+    private func use(data: StaxXmlPullParser) {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Use = Use()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesUse(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesUse(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesUse(obj: Use, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesUse(obj: Use, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x" => obj.x = parseLength(val)
                 case "y" => obj.y = parseLength(val)
                 case "width" =>
@@ -408,11 +391,11 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func parseAttributesViewBox(obj: SvgViewBoxContainer, attributes: ArrayList<XmlAttr>): Unit {
+    private func parseAttributesViewBox(obj: SvgViewBoxContainer, data: StaxXmlPullParser): Unit {
         var isViewBox = false
-        for (attribute in attributes) {
-            let content: String = attribute.content
-            match (attribute.name) {
+        for (i in 0..data.getAttributeCount()) {
+            let content: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "viewBox" =>
                     isViewBox = true
                     obj.viewBox = parseViewBox(content)
@@ -460,10 +443,10 @@ public class SVGParserImpl <: SVGParser {
         obj.preserveAspectRatio = PreserveAspectRatio.of(content)
     }
 
-    private func parseAttributesSVG(obj: Svg, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let content: String = attribute.content.trimAscii()
-            match (attribute.name) {
+    private func parseAttributesSVG(obj: Svg, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let content: String = data.getAttributeValue(i).trimAscii()
+            match (data.getAttributeName(i)) {
                 case "x" => obj.x = parseLength(content)
                 case "y" => obj.y = parseLength(content)
                 case "width" =>
@@ -519,18 +502,18 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func parseAttributesConditional(obj: SvgConditional, attributes: ArrayList<XmlAttr>) {
-        if (attributes.isEmpty()) {
+    private func parseAttributesConditional(obj: SvgConditional, data: StaxXmlPullParser) {
+        if (data.getAttributeCount() <= 0) {
             return
         }
-        for (attribute in attributes) {
-            match (attribute.name) {
-                case "requiredFeatures" => obj.setRequiredFeatures(parseRequiredFeatures(attribute.content))
-                case "requiredExtensions" => obj.setRequiredExtensions(attribute.content)
-                case "systemLanguage" => obj.setSystemLanguage(parseSystemLanguage(attribute.content))
-                case "requiredFormats" => obj.setRequiredFormats(parseRequiredFormats(attribute.content))
+        for (i in 0..data.getAttributeCount()) {
+            match (data.getAttributeName(i)) {
+                case "requiredFeatures" => obj.setRequiredFeatures(parseRequiredFeatures(data.getAttributeValue(i)))
+                case "requiredExtensions" => obj.setRequiredExtensions(data.getAttributeValue(i))
+                case "systemLanguage" => obj.setSystemLanguage(parseSystemLanguage(data.getAttributeValue(i)))
+                case "requiredFormats" => obj.setRequiredFormats(parseRequiredFormats(data.getAttributeValue(i)))
                 case "requiredFonts" =>
-                    let fonts: ArrayList<String> = parseFontFamily(attribute.content)
+                    let fonts: ArrayList<String> = parseFontFamily(data.getAttributeValue(i))
                     var fontSet: HashSet<String> = if (fonts.size > 0) {
                         HashSet<String>(fonts)
                     } else {
@@ -607,8 +590,8 @@ public class SVGParserImpl <: SVGParser {
         return fonts
     }
 
-    func startElement(data: XmlElement): Unit {
-        let name: String = data.name
+    func startElement(data: StaxXmlPullParser): Unit {
+        let name: String = data.getName()
         if (this.ignoring) {
             this.ignoreDepth++
         }
@@ -676,30 +659,28 @@ public class SVGParserImpl <: SVGParser {
             this.ignoring = true
             this.ignoreDepth = 1
         }
-        endElement(name)
     }
 
-    private func image(data: XmlElement): Unit {
+    private func image(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Image2 = Image2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesImage(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesImage(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesImage(obj: Image2, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesImage(obj: Image2, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x" => obj.x = parseLength(val)
                 case "y" => obj.y = parseLength(val)
                 case "width" =>
@@ -719,15 +700,15 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func style(data: XmlElement): Unit {
+    private func style(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         var isTextCSS: Bool = true
         var media: String = "all"
-        for (attribute in data.attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "type" => isTextCSS = "text/css" == val
                 case "media" => media = val
                 case _ => ()
@@ -735,43 +716,41 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func symbol(data: XmlElement): Unit {
+    private func symbol(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Symbol = Symbol()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        this.parseAttributesCore(obj, data.attributes)
-        this.parseAttributesStyle(obj, data.attributes)
-        this.parseAttributesConditional(obj, data.attributes)
-        this.parseAttributesViewBox(obj, data.attributes)
+        this.parseAttributesCore(obj, data)
+        this.parseAttributesStyle(obj, data)
+        this.parseAttributesConditional(obj, data)
+        this.parseAttributesViewBox(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func marker(data: XmlElement): Unit {
+    private func marker(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Marker = Marker()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesViewBox(obj, data.attributes)
-        parseAttributesMarker(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesViewBox(obj, data)
+        parseAttributesMarker(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesMarker(obj: Marker, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesMarker(obj: Marker, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "refX" => obj.refX = parseLength(val)
                 case "refY" => obj.refY = parseLength(val)
                 case "markerWidth" =>
@@ -802,26 +781,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func linearGradient(data: XmlElement): Unit {
+    private func linearGradient(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: SvgLinearGradient = SvgLinearGradient()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesGradient(obj, data.attributes)
-        parseAttributesLinearGradient(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesGradient(obj, data)
+        parseAttributesLinearGradient(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesGradient(obj: GradientElement, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesGradient(obj: GradientElement, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "gradientUnits" => if ("objectBoundingBox" == val) {
                     obj.gradientUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
@@ -843,10 +821,10 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func parseAttributesLinearGradient(obj: SvgLinearGradient, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesLinearGradient(obj: SvgLinearGradient, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x1" => obj.x1 = parseLength(val)
                 case "y1" => obj.y1 = parseLength(val)
                 case "x2" => obj.x2 = parseLength(val)
@@ -856,26 +834,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func radialGradient(data: XmlElement): Unit {
+    private func radialGradient(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: SvgRadialGradient = SvgRadialGradient()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesGradient(obj, data.attributes)
-        parseAttributesRadialGradient(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesGradient(obj, data)
+        parseAttributesRadialGradient(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesRadialGradient(obj: SvgRadialGradient, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesRadialGradient(obj: SvgRadialGradient, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "cx" => obj.cx = parseLength(val)
                 case "cy" => obj.cy = parseLength(val)
                 case "r" =>
@@ -890,7 +867,7 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func stop(data: XmlElement): Unit {
+    private func stop(data: StaxXmlPullParser): Unit {
         let current: SvgContainer = this.currentElement ?? throw SVGParseException(
             "Invalid document. Root element must be <svg>")
         if (!(current is GradientElement)) {
@@ -901,18 +878,17 @@ public class SVGParserImpl <: SVGParser {
         let obj: Stop = Stop()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesStop(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesStop(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesStop(obj: Stop, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesStop(obj: Stop, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "offset" => obj.offset = Int64(parseGradientOffset(val))
                 case _ => ()
             }
@@ -947,27 +923,26 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func clipPath(data: XmlElement): Unit {
+    private func clipPath(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: ClipPath = ClipPath()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesClipPath(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesClipPath(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesClipPath(obj: ClipPath, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesClipPath(obj: ClipPath, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "clipPathUnits" => if ("objectBoundingBox" == val) {
                     obj.clipPathUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
@@ -980,26 +955,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func textPath(data: XmlElement): Unit {
+    private func textPath(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: TextPath = TextPath()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesTextPath(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesTextPath(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesTextPath(obj: TextPath, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesTextPath(obj: TextPath, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "href" => obj.href = val
                 case "startOffset" => obj.startOffset = parseLength(val)
                 case _ => ()
@@ -1007,27 +981,26 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func pattern(data: XmlElement): Unit {
+    private func pattern(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Pattern = Pattern()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesViewBox(obj, data.attributes)
-        parseAttributesPattern(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesViewBox(obj, data)
+        parseAttributesPattern(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesPattern(obj: Pattern, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesPattern(obj: Pattern, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "patternUnits" => if ("objectBoundingBox" == val) {
                     obj.patternUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
@@ -1064,41 +1037,39 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func view(data: XmlElement): Unit {
+    private func view(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: View = View()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesViewBox(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesViewBox(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func mask(data: XmlElement): Unit {
+    private func mask(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Mask = Mask()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        this.parseAttributesCore(obj, data.attributes)
-        this.parseAttributesStyle(obj, data.attributes)
-        this.parseAttributesConditional(obj, data.attributes)
-        this.parseAttributesMask(obj, data.attributes)
+        this.parseAttributesCore(obj, data)
+        this.parseAttributesStyle(obj, data)
+        this.parseAttributesConditional(obj, data)
+        this.parseAttributesMask(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func parseAttributesMask(obj: Mask, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesMask(obj: Mask, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "maskUnits" => if ("objectBoundingBox" == val) {
                     obj.maskUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
@@ -1134,7 +1105,7 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func tspan(data: XmlElement): Unit {
+    private func tspan(data: StaxXmlPullParser): Unit {
         let current = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
         if (!(current is TextContainer)) {
             throw SVGParseException(
@@ -1143,17 +1114,16 @@ public class SVGParserImpl <: SVGParser {
         let obj: TSpan = TSpan()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesTextPosition(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesTextPosition(obj, data)
         currentElement().addChild(obj)
-        parseElementsOfTSpan(obj, data.childrenElements)
+        parseElementsOfTSpan(obj, data)
         currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func tref(data: XmlElement): Unit {
+    private func tref(data: StaxXmlPullParser): Unit {
         let current = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
         if (!(current is TextContainer)) {
             throw SVGParseException(
@@ -1162,58 +1132,57 @@ public class SVGParserImpl <: SVGParser {
         let obj: TRef = TRef()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesTRef(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesTRef(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesTRef(obj: TRef, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesTRef(obj: TRef, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "href" => obj.href = val
                 case _ => ()
             }
         }
     }
 
-    private func zwitch(data: XmlElement): Unit {
+    private func zwitch(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Switch = Switch()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
         this.currentElement().addChild(obj)
         this.currentElement = obj
-        parseAttributesChild(data.childrenElements)
     }
 
-    private func line(data: XmlElement): Unit {
+    private func line(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Line2 = Line2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesLine(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesLine(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesLine(obj: Line2, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesLine(obj: Line2, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x1" => obj.x1 = parseLength(val)
                 case "y1" => obj.y1 = parseLength(val)
                 case "x2" => obj.x2 = parseLength(val)
@@ -1223,25 +1192,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func polyline(data: XmlElement): Unit {
+    private func polyline(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: PolyLine = PolyLine()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesPolyLine(obj, data.attributes, "polyline")
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesPolyLine(obj, data, "polyline")
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesPolyLine(obj: PolyLine, attributes: ArrayList<XmlAttr>, tag: String): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesPolyLine(obj: PolyLine, data: StaxXmlPullParser, tag: String): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "points" =>
                     let scan: TextScanner = TextScanner(val)
                     let points: ArrayList<Float64> = ArrayList<Float64>()
@@ -1275,28 +1244,28 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func polygon(data: XmlElement): Unit {
+    private func polygon(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Polygon2 = Polygon2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesPolyLine(obj, data.attributes, "polygon")
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesPolyLine(obj, data, "polygon")
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesTextPosition(obj: TextPositionedContainer, attributes: ArrayList<XmlAttr>): Unit {
-        if (attributes.isEmpty()) {
+    private func parseAttributesTextPosition(obj: TextPositionedContainer, data: StaxXmlPullParser): Unit {
+        if (data.getAttributeCount() <= 0) {
             return
         }
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x" => obj.x = parseLengthList(val)
                 case "y" => obj.y = parseLengthList(val)
                 case "dx" => obj.dx = parseLengthList(val)
@@ -1330,25 +1299,25 @@ public class SVGParserImpl <: SVGParser {
         return coords
     }
 
-    private func rect(data: XmlElement): Unit {
+    private func rect(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Rect2 = Rect2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesRect(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesRect(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesRect(obj: Rect2, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesRect(obj: Rect2, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "x" => obj.x = parseLength(val)
                 case "y" => obj.y = parseLength(val)
                 case "width" =>
@@ -1376,25 +1345,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func circle(data: XmlElement): Unit {
+    private func circle(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Circle2 = Circle2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesCircle(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesCircle(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesCircle(obj: Circle2, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesCircle(obj: Circle2, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "cx" => obj.cx = parseLength(val)
                 case "cy" => obj.cy = parseLength(val)
                 case "r" =>
@@ -1407,25 +1376,25 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func ellipse(data: XmlElement): Unit {
+    private func ellipse(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Ellipse2 = Ellipse2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesEllipse(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesEllipse(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesEllipse(obj: Ellipse2, attributes: ArrayList<XmlAttr>): Unit {
-        for (attribute in attributes) {
-            let val: String = attribute.content
-            match (attribute.name) {
+    private func parseAttributesEllipse(obj: Ellipse2, data: StaxXmlPullParser): Unit {
+        for (i in 0..data.getAttributeCount()) {
+            let val: String = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "cx" => obj.cx = parseLength(val)
                 case "cy" => obj.cy = parseLength(val)
                 case "rx" =>
@@ -1491,25 +1460,25 @@ public class SVGParserImpl <: SVGParser {
         this.svgDocument().addCSSRules(cssp.parse(sheet))
     }
 
-    private func path(data: XmlElement) {
+    private func path(data: StaxXmlPullParser) {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
         let obj: Path2 = Path2()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        parseAttributesCore(obj, data.attributes)
-        parseAttributesStyle(obj, data.attributes)
-        parseAttributesTransform(obj, data.attributes)
-        parseAttributesConditional(obj, data.attributes)
-        parseAttributesPath(obj, data.attributes)
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesPath(obj, data)
         this.currentElement().addChild(obj)
     }
 
-    private func parseAttributesPath(obj: Path2, attributes: ArrayList<XmlAttr>) {
-        for (attribute in attributes) {
-            let val = attribute.content
-            match (attribute.name) {
+    private func parseAttributesPath(obj: Path2, data: StaxXmlPullParser) {
+        for (i in 0..data.getAttributeCount()) {
+            let val = data.getAttributeValue(i)
+            match (data.getAttributeName(i)) {
                 case "d" => obj.d = parsePath(val)
                 case "pathLength" =>
                     obj.pathLength = parseFloat(val)
