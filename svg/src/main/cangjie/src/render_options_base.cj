@@ -4,7 +4,7 @@
 
 package svg
 
-open class RenderOptionsBase {
+public open class RenderOptionsBase {
     var css: String = ""
     var cssRuleset: ?RuleSet = None
     var preserveAspectRatio: ?PreserveAspectRatio = None

@@ -4,7 +4,7 @@
 
 package svg
 
-class CSS <: CSSBase {
+public class CSS <: CSSBase {
     init(css: String) {
         super(css)
     }

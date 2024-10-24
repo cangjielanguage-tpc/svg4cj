@@ -11,24 +11,43 @@ public class SVG {
         this.base = base
     }
 
-    public static func getFromString(svg: String): SVG {
-        return SVG(SVGBase.getFromString(svg))
+    public static func getFromString(data: String, callback: (SVG) -> Unit): Future<Unit> {
+        let fut: Future<Unit> = spawn {
+            let svgBase: SVGBase = SVGBase.getFromString(data)
+            var svg: SVG = SVG(svgBase)
+            callback(svg)
+        }
+        return fut
     }
 
-    public static func getFromResource(media: OhosResource, callback: (SVG) -> Unit, abilityContext: AbilityContext): Unit {
-        SVGBase.getFromResource(media, {
-            v: SVGBase =>
-            var svg: SVG = SVG(v)
-            callback(svg)
-        }, abilityContext)
+    public static func getFromResource(media: OhosResource, callback: (SVG) -> Unit, abilityContext: AbilityContext): Future<Unit> {
+        let fut: Future<Unit> = spawn {
+            SVGBase.getFromResource(
+                media,
+                {
+                    v: SVGBase =>
+                    var svg: SVG = SVG(v)
+                    callback(svg)
+                },
+                abilityContext
+            )
+        }
+        return fut
     }
 
-    public static func getFromRawfile(rawfileName: String, callback: (SVG) -> Unit, abilityContext: AbilityContext): Unit {
-        SVGBase.getFromRawfile(rawfileName, {
-            v: SVGBase =>
-            var svg: SVG = SVG(v)
-            callback(svg)
-        }, abilityContext)
+    public static func getFromRawfile(rawfileName: String, callback: (SVG) -> Unit, abilityContext: AbilityContext): Future<Unit> {
+        let fut: Future<Unit> = spawn {
+            SVGBase.getFromRawfile(
+                rawfileName,
+                {
+                    v: SVGBase =>
+                    var svg: SVG = SVG(v)
+                    callback(svg)
+                },
+                abilityContext
+            )
+        }
+        return fut
     }
 
     func getRootElement(): Svg {
