@@ -30,12 +30,12 @@ public class SVGImageViewModel {
      * 
      * 参数 svg - 要传入的自定义 svg 类对象
      * 参数 context - Ability状态上下文
-     * 参数 css - String 类型的缺省参数，表示传入的渲染可选项内容
+     * 参数 css - String 类型的缺省参数，表示传入的渲染可选项内容，只能修改 css 样式，无法通过接口修改 svg 原有形状
      */
     public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css): Unit
 
     /*
-     * 设置渲染可选项
+     * 设置渲染可选项，只能修改 css 样式，无法通过接口修改 svg 原有形状
      * 
      * 参数 css - 要传入的自定义渲染可选项
      * 参数 context - Ability状态上下文
@@ -67,13 +67,14 @@ public class SVGImageViewModel {
     public func setFromString(url: String, context: ?AbilityContext): Unit
     
     /*
-     * 生成svg类型的PixelMap对象
+     * 生成svg类型的PixelMap对象，目前缺少离屏绘制对象(OffscreenCanvasRenderingContext2D)，导致 pixelMap 无法生成，此接口暂无法使用
      * 
      * 参数 data - 待生成的数组
      * 参数 context - Ability状态上下文
+     * 参数 screen - 缺省参数 screen 表示当前屏幕密度比例
      * 返回值 PixelMap - PixelMap对象
      */
-    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext): PixelMap
+    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext, screen!: Float64 = pxTovp): PixelMap
 
 }
 ```

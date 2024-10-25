@@ -156,7 +156,7 @@ public class SVGImageViewModel {
         }
     }
 
-    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext, screen!: Float64 = 3.25): PixelMap {
+    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext, screen!: Float64 = pxTovp): PixelMap {
         if (context.isSome()) {
             this.context = context
         }

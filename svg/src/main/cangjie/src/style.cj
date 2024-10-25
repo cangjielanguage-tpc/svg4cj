@@ -6,10 +6,10 @@ package svg
 
 public class Style {
     var specifiedFlags: Int64 = 0
-    var fill: ?SvgPaint = None
+    var fill: ?SvgPaint = Colour.BLACK
     var fillRule: String = ""
-    var fillOpacity: Float64 = 0.0
-    var stroke: ?SvgPaint = None
+    var fillOpacity: Float64 = 1.0
+    var stroke: ?SvgPaint = Colour.BLACK
     var strokeOpacity: Float64 = 0.0
     var strokeWidth: SVGLength = SVGLength()
     var strokeLineCap: ?LineCap = None
@@ -18,7 +18,7 @@ public class Style {
     var strokeDashArray: ArrayList<SVGLength> = ArrayList<SVGLength>()
     var strokeDashOffset: SVGLength = SVGLength()
 
-    var opacity: Float64 = 0.0 // master opacity of both stroke and fill
+    var opacity: Float64 = 1.0 // master opacity of both stroke and fill
     var color: Colour = Colour.BLACK
 
     var fontFamily: ArrayList<String> = ArrayList<String>()
@@ -721,7 +721,7 @@ public class Style {
             var href: String
             if (let Some(v) <- closeBracket) {
                 href = val[4..v].trimAscii()
-                var fallback: SvgPaint = SvgPaint()
+                var fallback: ?SvgPaint = None
                 val = val[(v + 1)..].trimAscii()
                 if (val.size > 0) {
                     fallback = parseColourSpecifer(val)
@@ -729,7 +729,7 @@ public class Style {
                 return PaintReference(href, fallback)
             } else {
                 href = val[4..].trimAscii()
-                return PaintReference(href, SvgPaint())
+                return PaintReference(href, Option<SvgPaint>.None)
             }
         } else {
             return parseColourSpecifer(val)

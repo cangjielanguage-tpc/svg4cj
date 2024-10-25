@@ -21,7 +21,7 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
 
 ### 特性
 
-1. 支持渲染大多数标准的 SVG 图像
+1. 支持渲染大多数 SVG 1.1 规范的图像，详见约束与限制
 
 ### 源码目录
 
@@ -88,6 +88,7 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
       ```cangjie
       import svg.*
       ```
+   6. 在测试项目时，若使用的是模拟器环境，请在 entry/build-profile.json5 文件的 "cangjieOptions": {} 添加 "abiFilters": ["x86_64"]，如果是真机环境，请将 ["x86_64"] 修改为 ["arm64-v8a"]
 
 2. 把 svg4cj 作为三方库依赖引入
     1. 目标工程把 svg4cj 依赖库作为 git submodule 引入
@@ -139,10 +140,38 @@ class RenderMerman {
 
 在下述版本验证通过：
 
-    DevEco Studio NEXT Beta1(5.0.3.800) 
-    Cangjie Support Plugin 5.0.3.800
+    DevEco Studio NEXT Beta1(5.0.3.900) 
+    Cangjie Support Plugin 5.0.3.900
 
-1. 只支持大部分 SVG 1.1 规范格式的图像
+1. 只支持 SVG 1.1 规范格式图像中的以下元素：
+   <svg>
+   <g>
+   <defs>
+   <a>
+   <use>
+   <path>
+   <rect>
+   <circle>
+   <ellipse>
+   <line>
+   <polyline>
+   <polygon>
+   <text>
+   <tspan>
+   <tref>
+   <zwitch> 也是 <switch>
+   <symbol>
+   <marker>
+   <linearGradient>
+   <radialGradient>
+   <stop>
+   <clipPath>
+   <textPath>
+   <pattern>
+   <image>
+   <view>
+   <mask>
+   <style>
 
 ## 开源协议
 
