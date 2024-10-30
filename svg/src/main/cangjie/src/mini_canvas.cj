@@ -35,8 +35,8 @@ public class Paint {
     private var strokeWidth: Float64 = 2.0
     private var fontAlign: TextAlignStyle = TextAlignStyle.Start
     private var fontBaseline: TextBaseline = TextBaseline.Top
-    private var fontSize: Length = vp2px(Length(20, unitType: LengthType.vp)) ?? Length(0.0, unitType: LengthType.vp)
-    private var fontStyle: FontStyle = FontStyle.Normal
+    private var fontSize: Float64 = 20.0 * pxTovp
+    private var fontStyle: FontStyle = FontStyle.Italic
     private var fontWeight: FontWeight = FontWeight.Normal
     private var fontFamily: String = "sans-serif"
     private var shadowBlur: Int64 = 0
@@ -44,40 +44,40 @@ public class Paint {
     private var shadowOffsetX: Int64 = 0
     private var shadowOffsetY: Int64 = 0
     private var globalCompositeOperation: String = ""
-    private var lineCap: LineCapStyle = LineCapStyle.Butt
-    private var lineJoin: LineJoinStyle = LineJoinStyle.Miter
+    private var lineCap: ?LineCapStyle = None
+    private var lineJoin: ?LineJoinStyle = None
     private var strokeMiterLimit: Float64 = 0.0
     private var strokeDashArray: ArrayList<Float64> = ArrayList<Float64>()
     private var strokeDashOffset: Int64 = 0
     private var gr: ?CanvasGradient = None
 
-    init() {}
-
-    init(paint: Paint) {
-        this.offScreen = paint.offScreen
-        this.stroke = paint.stroke
-        this.alpha = paint.alpha
-        this.color = paint.color
-        this.strokeWidth = paint.strokeWidth
-        this.fontAlign = paint.fontAlign
-        this.fontBaseline = paint.fontBaseline
-        this.fontSize = paint.fontSize
-        this.fontStyle = paint.fontStyle
-        this.fontWeight = paint.fontWeight
-        this.fontFamily = paint.fontFamily
-        this.shadowBlur = paint.shadowBlur
-        this.shadowColor = paint.shadowColor
-        this.shadowOffsetX = paint.shadowOffsetX
-        this.shadowOffsetY = paint.shadowOffsetY
-        this.globalCompositeOperation = paint.globalCompositeOperation
-        this.lineCap = paint.lineCap
-        this.lineJoin = paint.lineJoin
-        this.strokeMiterLimit = paint.strokeMiterLimit
-        this.strokeDashArray = paint.strokeDashArray
-        this.strokeDashOffset = paint.strokeDashOffset
+    init(p: ?Paint) {
+        if (let Some(paint) <- p) {
+            this.offScreen = paint.offScreen
+            this.stroke = paint.stroke
+            this.alpha = paint.alpha
+            this.color = paint.color
+            this.strokeWidth = paint.strokeWidth
+            this.fontAlign = paint.fontAlign
+            this.fontBaseline = paint.fontBaseline
+            this.fontSize = paint.fontSize
+            this.fontStyle = paint.fontStyle
+            this.fontWeight = paint.fontWeight
+            this.fontFamily = paint.fontFamily
+            this.shadowBlur = paint.shadowBlur
+            this.shadowColor = paint.shadowColor
+            this.shadowOffsetX = paint.shadowOffsetX
+            this.shadowOffsetY = paint.shadowOffsetY
+            this.globalCompositeOperation = paint.globalCompositeOperation
+            this.lineCap = paint.lineCap
+            this.lineJoin = paint.lineJoin
+            this.strokeMiterLimit = paint.strokeMiterLimit
+            this.strokeDashArray = paint.strokeDashArray
+            this.strokeDashOffset = paint.strokeDashOffset
+        }
     }
 
-    func getFontSize(): Length {
+    func getFontSize(): Float64 {
         return this.fontSize
     }
 
@@ -97,11 +97,11 @@ public class Paint {
         this.strokeMiterLimit = strokeMiterLimit
     }
 
-    func setLineJoin(lineJoin: LineJoinStyle): Unit {
+    func setLineJoin(lineJoin: ?LineJoinStyle): Unit {
         this.lineJoin = lineJoin
     }
 
-    func setLineCap(lineCap: LineCapStyle): Unit {
+    func setLineCap(lineCap: ?LineCapStyle): Unit {
         this.lineCap = lineCap
     }
 
@@ -248,9 +248,9 @@ public class Paint {
         return this.fontBaseline
     }
 
-    func setFontSize(fontSize: Length): Paint {
-        this.fontSize = if (fontSize.value < 0.0) {
-            Length(0.0)
+    func setFontSize(fontSize: Float64): Paint {
+        this.fontSize = if (fontSize < 0.0) {
+            0.0
         } else {
             fontSize
         }
@@ -328,7 +328,7 @@ public class CanvasImpl <: ICanvas {
             context.shadowOffsetX(paint.getShadowOffsetX())
             context.shadowOffsetY(paint.getShadowOffsetY())
         }
-        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: paint.getFontSize(),
+        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: Length(paint.getFontSize()),
             family: paint.getFontFamily())
     }
 
@@ -356,7 +356,7 @@ public class CanvasImpl <: ICanvas {
     private func drawTextInternal(context: CanvasRenderingContext2D, text: String, x: Float64, y: Float64, paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.font(size: paint.getFontSize(), family: "sans-serif")
+        context.font(size: Length(paint.getFontSize()), family: "sans-serif")
         if (paint.isStroke()) {
             context.strokeText(text, x, y)
         } else {
@@ -556,11 +556,11 @@ public class CanvasImpl <: ICanvas {
         this.context.translate(x, y)
     }
 
-    public func restore(paint!: Paint = Paint()): Unit {
+    public func restore(paint!: Paint = Paint(Option<Paint>.None)): Unit {
         this.context.restore()
     }
 
-    public func save(paint!: Paint = Paint()): Unit {
+    public func save(paint!: Paint = Paint(Option<Paint>.None)): Unit {
         this.context.save()
     }
 

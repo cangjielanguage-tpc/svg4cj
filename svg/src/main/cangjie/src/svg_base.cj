@@ -358,6 +358,7 @@ public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgCond
 public open class SvgObject <: ToString {
     var document: ?SVGBase = None
     var parent: ?SvgContainer = None
+    var isRender: Bool = true
     public let types: String = ""
 
     public open func getNodeName(): String {
@@ -671,6 +672,9 @@ open class Group <: SvgConditionalContainer & HasTransform {
 interface NotDirectlyRendered {}
 
 class Defs <: Group & NotDirectlyRendered {
+    public init() {
+        isRender = false
+    }
     public func getNodeName(): String {
         return "defs"
     }
@@ -890,6 +894,9 @@ class Switch <: Group {
 }
 
 class Symbol <: SvgViewBoxContainer & NotDirectlyRendered {
+    public init() {
+        isRender = false
+    }
     public func getNodeName(): String {
         return "symbol"
     }
@@ -902,6 +909,9 @@ class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
     var markerWidth: SVGLength = SVGLength()
     var markerHeight: SVGLength = SVGLength()
     var orient: Float64 = 0.0
+    public init() {
+        isRender = false
+    }
 
     public func getNodeName(): String {
         return "marker"
@@ -975,6 +985,9 @@ class SvgRadialGradient <: GradientElement {
 }
 
 class ClipPath <: Group & NotDirectlyRendered {
+    public init() {
+        isRender = false
+    }
     var clipPathUnitsAreUser: Bool = false
 
     public func getNodeName(): String {
@@ -983,6 +996,9 @@ class ClipPath <: Group & NotDirectlyRendered {
 }
 
 class Pattern <: SvgViewBoxContainer & NotDirectlyRendered & Equatable<Pattern> {
+    public init() {
+        isRender = false
+    }
     var patternUnitsAreUser: Bool = false
     var patternContentUnitsAreUser: Bool = false
     var patternTransform: ?Matrix2D2 = None
@@ -1025,6 +1041,9 @@ class Image2 <: SvgPreserveAspectRatioContainer & HasTransform {
 }
 
 class View <: SvgViewBoxContainer & NotDirectlyRendered {
+    public init() {
+        isRender = false
+    }
     static let NODE_NAME: String = "view"
 
     public func getNodeName(): String {
@@ -1033,6 +1052,9 @@ class View <: SvgViewBoxContainer & NotDirectlyRendered {
 }
 
 class Mask <: SvgConditionalContainer & NotDirectlyRendered {
+    public init() {
+        isRender = false
+    }
     var maskUnitsAreUser: Bool = false
     var boolean: Bool = false
     var maskContentUnitsAreUser: Bool = false

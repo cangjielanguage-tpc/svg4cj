@@ -22,7 +22,7 @@ public class SVGParserImpl <: SVGParser {
     static let VALID_VISIBILITY_VALUES: String = "|visible|hidden|collapse|"
     var svgDocument: ?SVGBase = None
     private var currentElement: ?SvgContainer = None
-    private var ignoring: Bool = false
+    public var ignoring: Bool = false
     private var ignoreDepth: Int64 = 0
     var enableInternalEntities: Bool = true
     var externalFileResolver: SVGExternalFileResolver = SVGExternalFileResolver()
@@ -40,11 +40,38 @@ public class SVGParserImpl <: SVGParser {
         let buf = ByteArrayStream()
         buf.write(str.toArray())
         let parser: StaxXmlPullParser = StaxXmlPullParser(buf)
+        var textIng: Bool = false
+        var textObj: Text2 = Text2()
         while (parser.getEventType() != XmlPullParserEvent.END_DOCUMENT) {
             let event = parser.next()
             match (event) {
-                case START_ELEMENT => startElement(parser)
-                case END_ELEMENT => endElement(parser.getName())
+                case START_ELEMENT =>
+                    if (parser.getName() == "text") {
+                        textIng = true
+                        textAttribute(parser, textObj)
+                    } else {
+                        startElement(parser)
+                    }
+                case END_ELEMENT =>
+                    textIng = false
+                    textObj = Text2()
+                    endElement(parser.getName())
+                case TEXT_CHARACTERS =>
+                    if (textIng) {
+                        if (parser.getName() == "text") {
+                            textObj.text = parser.getText()
+                        }
+                        this.currentElement().addChild(textObj)
+                        this.currentElement = textObj
+                    }
+                    if (parser.getName() == "tspan") {
+                        this.ignoring = false
+                        tspan(parser, parser.getText())
+                    }
+                    if (parser.getName() == "style") {
+                        this.ignoring = false
+                        style(parser, parser.getText())
+                    }
                 case OTHER => ()
                 case _ => ()
             }
@@ -62,45 +89,17 @@ public class SVGParserImpl <: SVGParser {
         return this
     }
 
-    func text(data: StaxXmlPullParser): Unit {
+    func textAttribute(data: StaxXmlPullParser, textObj: Text2): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
-        let obj: Text2 = Text2()
-        obj.document = this.svgDocument
-        obj.parent = this.currentElement
-        parseAttributesCore(obj, data)
-        parseAttributesStyle(obj, data)
-        parseAttributesTransform(obj, data)
-        parseAttributesConditional(obj, data)
-        parseAttributesTextPosition(obj, data)
-        parseElementsOfText(obj, data)
-        this.currentElement().addChild(obj)
-        this.currentElement = obj
-    }
-
-    private func parseElementsOfText(svg: Text2, data: StaxXmlPullParser): Unit {
-        if (data.getAttributeCount() <= 0) {
-            return
-        }
-        for (i in 0..data.getAttributeCount()) {
-            match (data.getAttributeName(i)) {
-                case "text" => svg.text = data.getAttributeValue(i)
-                case _ => ()
-            }
-        }
-    }
-
-    private func parseElementsOfTSpan(svg: TSpan, data: StaxXmlPullParser): Unit {
-        if (data.getAttributeCount() <= 0) {
-            return
-        }
-        for (i in 0..data.getAttributeCount()) {
-            match (data.getAttributeName(i)) {
-                case "text" => svg.text = data.getAttributeValue(i)
-                case _ => ()
-            }
-        }
+        textObj.document = this.svgDocument
+        textObj.parent = this.currentElement
+        parseAttributesCore(textObj, data)
+        parseAttributesStyle(textObj, data)
+        parseAttributesTransform(textObj, data)
+        parseAttributesConditional(textObj, data)
+        parseAttributesTextPosition(textObj, data)
     }
 
     private func parseAttributesCore(obj: SvgElementBase, data: StaxXmlPullParser): Unit {
@@ -619,10 +618,6 @@ public class SVGParserImpl <: SVGParser {
             polyline(data)
         } else if (name == SVGXMLConstants.SVG_POLYGON_TAG) {
             polygon(data)
-        } else if (name == SVGXMLConstants.SVG_TEXT_TAG) {
-            text(data)
-        } else if (name == SVGXMLConstants.SVG_TSPAN_TAG) {
-            tspan(data)
         } else if (name == SVGXMLConstants.SVG_TREF_TAG) {
             tref(data)
         } else if (name == SVGXMLConstants.SVG_SWITCH_TAG) {
@@ -653,8 +648,6 @@ public class SVGParserImpl <: SVGParser {
             view(data)
         } else if (name == SVGXMLConstants.SVG_MASK_TAG) {
             mask(data)
-        } else if (name == SVGXMLConstants.SVG_STYLE_TAG) {
-            style(data)
         } else {
             this.ignoring = true
             this.ignoreDepth = 1
@@ -700,7 +693,8 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func style(data: StaxXmlPullParser): Unit {
+    private func style(data: StaxXmlPullParser, content: String): Unit {
+        styleElementContents = content
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
@@ -1105,21 +1099,16 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func tspan(data: StaxXmlPullParser): Unit {
-        let current = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
-        if (!(current is TextContainer)) {
-            throw SVGParseException(
-                "Invalid document. <tspan> elements are only valid inside <text> or other <tspan> elements.")
-        }
+    private func tspan(data: StaxXmlPullParser, text: String): Unit {
         let obj: TSpan = TSpan()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
+        obj.text = text
         parseAttributesCore(obj, data)
         parseAttributesStyle(obj, data)
         parseAttributesConditional(obj, data)
         parseAttributesTextPosition(obj, data)
         currentElement().addChild(obj)
-        parseElementsOfTSpan(obj, data)
         currentElement = obj
     }
 
@@ -1751,10 +1740,25 @@ public class SVGParserImpl <: SVGParser {
     }
 
     static func parseColour(val: String): Colour {
-        if (val.startsWith("#") && val.count("#") == 1) {
-            return Colour(Color(UInt32.parse(val.replace("#", "0x"))))
+        let opt: String = val.toAsciiLower()
+        if (opt == "white") {
+            return Colour(Color.WHITE)
+        } else if (opt == "black") {
+            return Colour(Color.BLACK)
+        } else if (opt == "red") {
+            return Colour(Color.RED)
+        } else if (opt == "green") {
+            return Colour(Color.GREEN)
+        } else if (opt == "blue") {
+            return Colour(Color.BLUE)
+        } else if (opt == "gray") {
+            return Colour(Color.GRAY)
         } else {
-            return Colour(Color(0x000000))
+            if (val.startsWith("#") && val.count("#") == 1) {
+                return Colour(Color(UInt32.parse(val.replace("#", "0x"))))
+            } else {
+                return Colour(Color(0x000000))
+            }
         }
     }
 
