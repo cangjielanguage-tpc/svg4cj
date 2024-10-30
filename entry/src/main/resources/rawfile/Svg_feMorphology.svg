@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180">
+    <text y="1em">普通文本</text>
+    <text id="thin" y="2em">细文本</text>
+    <text id="thick" y="3em">粗文本</text>
+</svg>

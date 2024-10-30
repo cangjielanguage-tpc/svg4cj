@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights resvered.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
  */
 
 package ohos_app_cangjie_entry
@@ -121,6 +121,93 @@ class Index {
                 }
                 Button("getSVGPixelMap").fontSize(14).onClick {
                     => Router.push(url: "getSVGPixelMap")
+                }
+                Button("Bugfix3D").fontSize(14).onClick {
+                    => Router.push(url: "Bugfix3D")
+                }
+                Button("Bugfix58").fontSize(14).onClick {
+                    => Router.push(url: "Bugfix58")
+                }
+                Button("BugfixAnimate").fontSize(14).onClick {
+                    => Router.push(url: "BugfixAnimate")
+                }
+                Button("BugfixBasics5").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics5")
+                }
+                Button("BugfixBasics6").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics6")
+                }
+                Button("BugfixBasics7").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics7")
+                }
+                Button("BugfixBasics8").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics8")
+                }
+                Button("BugfixBasics9").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics9")
+                }
+                Button("BugfixBasics14").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics14")
+                }
+                Button("BugfixBasics16").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics16")
+                }
+                Button("BugfixBasics17").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics17")
+                }
+                Button("BugfixBasics18").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics18")
+                }
+                Button("BugfixBasics19").fontSize(14).onClick {
+                    => Router.push(url: "BugfixBasics19")
+                }
+                Button("BugfixClipPath").fontSize(14).onClick {
+                    => Router.push(url: "BugfixClipPath")
+                }
+                Button("BugfixDesc").fontSize(14).onClick {
+                    => Router.push(url: "BugfixDesc")
+                }
+                Button("BugfixFeComponentTransfer").fontSize(14).onClick {
+                    => Router.push(url: "BugfixFeComponentTransfer")
+                }
+                Button("BugfixFeMorphology").fontSize(14).onClick {
+                    => Router.push(url: "BugfixFeMorphology")
+                }
+                Button("BugfixMaks").fontSize(14).onClick {
+                    => Router.push(url: "BugfixMaks")
+                }
+                Button("BugfixMarker").fontSize(14).onClick {
+                    => Router.push(url: "BugfixMarker")
+                }
+                Button("BugfixMarker1").fontSize(14).onClick {
+                    => Router.push(url: "BugfixMarker1")
+                }
+                Button("BugfixMarker2").fontSize(14).onClick {
+                    => Router.push(url: "BugfixMarker2")
+                }
+                Button("BugfixPattern").fontSize(14).onClick {
+                    => Router.push(url: "BugfixPattern")
+                }
+                Button("BugfixPloygon").fontSize(14).onClick {
+                    => Router.push(url: "BugfixPloygon")
+                }
+                Button("BugfixPloyLine").fontSize(14).onClick {
+                    => Router.push(url: "BugfixPloyLine")
+                }
+                Button("BugfixRect").fontSize(14).onClick {
+                    => Router.push(url: "BugfixRect")
+                }
+                Button("BugfixStop").fontSize(14).onClick {
+                    => Router.push(url: "BugfixStop")
+                }
+                Button("BugfixUse").fontSize(14).onClick {
+                    => Router.push(url: "BugfixUse")
+                }
+                Button("BugfixTspan").fontSize(14).onClick {
+                    => Router.push(url: "BugfixTspan")
+                }
+                Button("BugfixText").fontSize(14).onClick {
+                    => Router.push(url: "BugfixText")
                 }
             }.width(100.percent).backgroundColor(Color(0xFFF1A493))
         }.scrollable(ScrollDirection.Vertical)

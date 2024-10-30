@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 <svg width="1250" height="1250" version="1.1" viewBox="0 0 1250 1250" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <rect width="100%" height="100%" stroke="#af9bd6"/>
-  <g fill="#af9bd6" stroke="#000000" stroke-width="3">
+  <rect width="100%" height="100%" fill="#af9bd6"/>
+  <g fill="#af9bd6" stroke="#ffffff" stroke-width="3">
     <ellipse id="plate-lg" cx="644" cy="618.7" rx="445" ry="444.5" fill-opacity=".9896"/>
     <path id="plate-sm" d="m940.6 620.2a298.7 306.7 0 0 1-298.7 306.7 298.7 306.7 0 0 1-298.7-306.7 298.7 306.7 0 0 1 298.7-306.7 298.7 306.7 0 0 1 298.7 306.7z"/>
     <path class="orange" d="m345.5 568.1c-2.164-41.81-15.54-82.38 28.28-129.3 33.54-37.3 86.13-41.12 115.7-38.13 23.39 1.699 85.76 27.31 108.6 67.43 13.27 40.54 19.81 76.7 1.01 125.3-33.86 41.82-71.17 83.32-147.5 69.7-53.9-15.58-92.52-44.4-106.1-94.95z"/>

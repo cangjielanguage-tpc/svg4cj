@@ -1,0 +1,20 @@
+<svg viewBox="0 0 240 40" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        text {
+        font: italic 12px serif;
+        }
+        tspan {
+        font: bold 10px sans-serif;
+        fill: red;
+        }
+    </style>
+
+    <text x="10" y="30" class="small">
+        ‌“斗鸡山上
+        <tspan>山鸡斗</tspan>
+    </text>
+    <text x="100" y="30" class="small">
+        ‌“雾锁山头
+        <tspan>山锁雾</tspan>
+    </text>
+</svg>
