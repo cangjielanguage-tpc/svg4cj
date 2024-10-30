@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights resvered.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
  */
 
 package ohos_app_cangjie_entry
@@ -34,6 +34,6 @@ class SetCssSample2 {
                     }
                 }
             )
-        }.width(50.percent).height(70.percent).backgroundColor(Color.WHITE)
+        }
     }
 }

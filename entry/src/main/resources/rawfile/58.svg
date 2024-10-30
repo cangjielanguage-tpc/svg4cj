@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 2560 1600" enable-background="new 0 0 2560 1600" xml:space="preserve">
+<pattern  width="450" height="450" patternUnits="userSpaceOnUse" id="New_Pattern" viewBox="0 -450 450 450" overflow="visible">
+	<g>
+		<polygon fill="none" points="0,-450 450,-450 450,0 0,0 		"/>
+		<g>
+			<g>
+				<polygon stroke="#FF007F" stroke-width="5" fill="none" points="301.3344,-171.8609 315.7466,-146.8981 330.1589,-121.9353 315.7466,-146.8981 				"/>
+
+				<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="-73.6482" y1="-1579.4862" x2="-73.6482" y2="-2214.1663" gradientTransform="matrix(1.0079 0 0 1.0079 301.3694 1672.3818)">
+					<stop  offset="0" style="stop-color:#FFFFFF"/>
+					<stop  offset="0.0112" style="stop-color:#FFFFFF"/>
+					<stop  offset="0.2" style="stop-color:#000000"/>
+					<stop  offset="0.4" style="stop-color:#FFFFFF"/>
+					<stop  offset="0.6" style="stop-color:#000000"/>
+					<stop  offset="0.8" style="stop-color:#FFFFFF"/>
+					<stop  offset="1" style="stop-color:#000000"/>
+				</linearGradient>
+				<polygon stroke="#FF007F" stroke-width="5" fill="url(#SVGID_1_)" points="225,-225 229.273,-220.727 229.273,-225 				"/>
+			</g>
+		</g>
+	</g>
+</pattern>
+	<rect stroke="#FF6347" width="2560" height="1600"/>
+</svg>
