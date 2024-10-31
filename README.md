@@ -144,6 +144,7 @@ class RenderMerman {
     Cangjie Support Plugin 5.0.3.900
 
 1. 只支持 SVG 1.1 规范格式图像中的以下元素：
+```text
    <svg>
    <g>
    <defs>
@@ -172,6 +173,7 @@ class RenderMerman {
    <view>
    <mask>
    <style>
+```
 
 ## 开源协议
 
