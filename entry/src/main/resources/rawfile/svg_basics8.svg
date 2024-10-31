@@ -10,8 +10,8 @@
     <a xlink:href="http://www.ibm.com//developerworks/">
         <circle cx="100" cy="100" r="50" style="stroke:grey"/>
         <text x="70" y="100">
-            <tspan stroke="red" fill="none">Hello</tspan>
-            <tspan stroke="blue" fill="none">World</tspan>
+            <tspan stroke="red">Hello</tspan>
+            <tspan stroke="blue">World</tspan>
         </text>
     </a>
     <a xlink:href="http://www.ibm.com/" target="new">

@@ -328,7 +328,7 @@ public class CanvasImpl <: ICanvas {
             context.shadowOffsetX(paint.getShadowOffsetX())
             context.shadowOffsetY(paint.getShadowOffsetY())
         }
-        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: Length(paint.getFontSize()),
+        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: Length(paint.getFontSize(), unitType: LengthType.px),
             family: paint.getFontFamily())
     }
 
@@ -356,7 +356,7 @@ public class CanvasImpl <: ICanvas {
     private func drawTextInternal(context: CanvasRenderingContext2D, text: String, x: Float64, y: Float64, paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.font(size: Length(paint.getFontSize()), family: "sans-serif")
+        context.font(size: Length(paint.getFontSize(), unitType: LengthType.px), family: "sans-serif")
         if (paint.isStroke()) {
             context.strokeText(text, x, y)
         } else {
