@@ -46,9 +46,9 @@
     </defs>
 
     <g font-weight="bold">
-        <text x="0" y="5%" fill="none" stroke="black">Default</text>
+        <text x="0" y="5%" stroke="black">Default</text>
         <rect x="0" y="8%" width="100%" stroke="black" height="20"></rect>
-        <text x="0" y="26%" fill="none" stroke="black">Identity</text>
+        <text x="0" y="26%" stroke="black">Identity</text>
         <rect
                 x="0"
                 y="29%"
@@ -56,7 +56,7 @@
                 height="20"
                 stroke="black"
                 style="filter:url(#identity)"></rect>
-        <text x="0" y="47%" fill="none" stroke="black">Table lookup</text>
+        <text x="0" y="47%" stroke="black">Table lookup</text>
         <rect
                 x="0"
                 y="50%"
@@ -64,7 +64,7 @@
                 height="20"
                 stroke="green"
                 style="filter:url(#table)"></rect>
-        <text x="0" y="68%" fill="none" stroke="black">Linear function</text>
+        <text x="0" y="68%" stroke="black">Linear function</text>
         <rect
                 x="0"
                 y="71%"
@@ -72,7 +72,7 @@
                 height="20"
                 stroke="blue"
                 style="filter:url(#linear)"></rect>
-        <text x="0" y="89%" fill="none" stroke="black">Gamma function</text>
+        <text x="0" y="89%" stroke="black">Gamma function</text>
         <rect
                 x="0"
                 y="92%"

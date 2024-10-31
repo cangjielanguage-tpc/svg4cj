@@ -2,7 +2,7 @@
      baseProfile="full"
      width="300" height="200"
      xmlns="http://www.w3.org/2000/svg">
-    <text x="70" y="100" fill="none" stroke="blue">
+    <text x="70" y="100" stroke="blue">
         <tspan>Hello</tspan>
     </text>
 </svg>
