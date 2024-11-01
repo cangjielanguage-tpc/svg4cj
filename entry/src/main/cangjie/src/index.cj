@@ -209,6 +209,9 @@ class Index {
                 Button("BugfixText").fontSize(14).onClick {
                     => Router.push(url: "BugfixText")
                 }
+                Button("BugfixFunDraw").fontSize(14).onClick {
+                    => Router.push(url: "BugfixFunDraw")
+                }
             }.width(100.percent).backgroundColor(Color(0xFFF1A493))
         }.scrollable(ScrollDirection.Vertical)
     }

@@ -494,6 +494,8 @@ public class CanvasImpl <: ICanvas {
                 } else {
                     this.context.fillStyle(v.getColor())
                 }
+                // TODO..
+                // this.context.fill(path)
                 this.context.fill()
             }
         }
@@ -545,7 +547,9 @@ public class CanvasImpl <: ICanvas {
 
     public func clipPath(path: Path2D): Unit {
         this.context.beginPath()
-        this.context.clip()
+        // TODO..
+        // this.context.clip(path)
+        this.context.stroke(path)
     }
 
     public func drawColor(color: Color): Unit {

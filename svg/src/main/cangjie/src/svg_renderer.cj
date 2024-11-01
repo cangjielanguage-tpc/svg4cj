@@ -48,7 +48,7 @@ public class SVGRenderer {
         if (isSpecified(style, Style.SPECIFIED_FILL)) {
             state.style.fill = style.fill
             if (style.fill.isSome() && style.fill() != Colour.TRANSPARENT) {
-            	state.hasFill = true
+                state.hasFill = true
             } else {
                 state.hasFill = false
             }
@@ -74,7 +74,7 @@ public class SVGRenderer {
         if (isSpecified(style, Style.SPECIFIED_STROKE)) {
             state.style.stroke = style.stroke
             if (style.stroke.isSome() && style.stroke() != Colour.TRANSPARENT) {
-            	state.hasStroke = true
+                state.hasStroke = true
             } else {
                 state.hasStroke = false
             }
@@ -530,11 +530,11 @@ public class SVGRenderer {
         if (let Some(v) <- clipPath.transform) {
             m.append(v.a, v.b, v.c, v.d, v.tx, v.ty)
         }
-        var combinedPath: Path2D = Path2D()
+        var cp: Path2D = Path2D()
         for (i in 0..clipPath.children.size) {
             let child = clipPath.children[i]
             if (let Some(ele) <- child as SvgElement) {
-                combinedPath = objectToPath(ele, true)
+                cp = objectToPath(ele, true)
             } else {
                 continue
             }
@@ -542,12 +542,12 @@ public class SVGRenderer {
         if (!this.state.style.clipPath.isEmpty()) {
             let clipClipPath: ?Path2D = calculateClipPath(clipPath, clipPath.boundingBox)
             if (let Some(v) <- clipClipPath) {
-                combinedPath.addPath(v)
+                cp.addPath(v)
             }
         }
         this.canvas.getContext().transform(m.a, m.b, m.c, m.d, m.getE(), m.getF())
         this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
-        return combinedPath
+        return cp
     }
 
     private func calculateViewBoxTransform(viewPort: Box, viewBox: Box, positioning: PreserveAspectRatio): Matrix2D2 {
@@ -1949,7 +1949,8 @@ public class SVGRenderer {
             for (i in 0..obj.children.size) {
                 let child: SvgObject = obj.children[i]
                 if (child is TextSequence) {
-                    textprocessor.processText(textXMLSpaceTransform((child as TextSequence)().text, isFirstChild, i + 1 != obj.children.size),
+                    textprocessor.processText(
+                        textXMLSpaceTransform((child as TextSequence)().text, isFirstChild, i + 1 != obj.children.size),
                         this.state, this.canvas)
                 } else {
                     processTextChild(child, textprocessor, context)
@@ -1958,9 +1959,11 @@ public class SVGRenderer {
             }
         } else {
             if (obj is Text2) {
-            	textprocessor.processText(textXMLSpaceTransform((obj as Text2)().text, true, true), this.state, this.canvas)
+                textprocessor.processText(textXMLSpaceTransform((obj as Text2)().text, true, true), this.state,
+                    this.canvas)
             } else if (obj is TSpan) {
-                textprocessor.processText(textXMLSpaceTransform((obj as TSpan)().text, true, true), this.state, this.canvas)
+                textprocessor.processText(textXMLSpaceTransform((obj as TSpan)().text, true, true), this.state,
+                    this.canvas)
             }
         }
     }
@@ -2313,8 +2316,7 @@ public class SVGRenderer {
             }
             path = objectToPath((ref() as SvgElement)(), false)
         } else if (let Some(path2) <- obj as Path2) {
-            let pathElem: Path2 = path2
-            path = Path2D(pathElem.d().d)
+            path = Path2D(path2.d().d)
         } else if (let Some(rect2) <- obj as Rect2) {
             path = makePathAndBoundingBoxRect(rect2)
         } else if (let Some(circle2) <- obj as Circle2) {
@@ -2324,8 +2326,7 @@ public class SVGRenderer {
         } else if (let Some(line) <- obj as PolyLine) {
             path = makePathAndBoundingBoxPolyLine(line)
         } else if (let Some(t) <- obj as Text2) {
-            let textElem: Text2 = t
-            path = makePathAndBoundingBoxText(textElem)
+            path = makePathAndBoundingBoxText(t)
         } else {
             return Path2D()
         }
