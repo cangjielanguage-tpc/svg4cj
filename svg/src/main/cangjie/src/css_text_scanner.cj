@@ -431,7 +431,7 @@ public class CSSTextScanner <: TextScanner {
         var start: Int64 = position
         var lastValidPos: Int64 = position
         var byte = input[position]
-        while (byte != b' ' && byte != b';' && byte != b'}' && byte != b'!') {
+        while (position < input.size && byte != b';' && byte != b'}' && byte != b'!' && !isEOL(byte)) {
             if (!isWhitespace(byte)) {
                 // don't include an spaces at the end
                 lastValidPos = position + 1

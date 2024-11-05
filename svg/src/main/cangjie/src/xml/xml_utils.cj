@@ -47,7 +47,7 @@ struct Status <: Equatable<Status> & ToString {
     }
 
     public operator func !=(other: Status): Bool {
-        return this.v != other.v
+        return !(this == other)
     }
 
     public override func toString(): String {
@@ -113,7 +113,7 @@ struct Status <: Equatable<Status> & ToString {
 }
 
 class BytesInputStream <: ToString {
-    protected let buffer = Array<Byte>(50000, item: 0)
+    protected let buffer = Array<Byte>(4096, item: 0)
     protected var window = Array<Byte>() // the slice of data buffer, for fast path
 
     public BytesInputStream(private let rawInput: InputStream) {}
@@ -129,7 +129,7 @@ class BytesInputStream <: ToString {
             return window[idx]
         }
 
-        if (!tryFill(idx)) {
+        if (!tryFill(idx + 1)) {
             throw XmlException("Failed to read data, idx: ${idx} out of size: ${size}.")
         }
         return window[idx]
@@ -180,31 +180,35 @@ class BytesInputStream <: ToString {
 
     public func readUntil(condition: (Byte, Int64) -> Bool): String {
         let sb = StringBuilder()
-        while (!tryRead(sb, condition)) {}
+        while (!tryRead(sb, condition)) {
+            tryFill(1)
+        }
         return sb.toString()
     }
 
     private func tryRead(sb: StringBuilder, condition: (Byte, Int64) -> Bool): Bool {
-        var idx = 0
-        while (idx < window.size && !condition(this[idx], idx)) {
+        var idx = 0 // 设 0..idx 为有效数据
+
+        while (idx < window.size && !condition(window[idx], idx)) {
             idx++
         }
-
         let done = idx < window.size
         if (done == false) {
-            idx--
             // 向前寻找utf8第一个字节
-            while (idx >= 0 && window[idx] >> 6 == 0b10) {
+            while (idx - 1 >= 0 && window[idx - 1] >> 6 == 0b10) {
                 idx--
             }
         }
 
         let readData = window[..idx] // read data
         sb.append(unsafe { String.fromUtf8Unchecked(readData) })
-        window = window[idx..] // remain data
-        if (!done) {
-            this.tryFill(idx)
+        // remain data
+        window = if (idx >= window.size) {
+            window[..0]
+        } else {
+            window[idx..]
         }
+
         return done
     }
 
@@ -264,9 +268,9 @@ class BytesInputStream <: ToString {
             (rune, runeSize) = peekRune(readLen)
         }
 
-        let readData = window.slice(0, readLen)
-        window = window.slice(readLen, window.size - readLen)
-        return (String.fromUtf8(readData), true)
+        let readData = unsafe { String.fromUtf8Unchecked(window[..readLen]) }
+        window = window[readLen..]
+        return (readData, true)
     }
 
     /**

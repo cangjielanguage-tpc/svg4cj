@@ -10,21 +10,29 @@ import ohos.state_macro_manage.*
 @Component
 class RenderAbstract {
     var model: SVGImageViewModel = SVGImageViewModel()
+    @State
+    var flag: Bool = false
 
-protected override func aboutToAppear() {
-    this.model.setImageRawfile("abstract.svg", globalAbilityContext)
-}
+    protected override func aboutToAppear() {
+        this.model.setImageRawfile("abstract.svg", globalAbilityContext)
+    }
 
-func build() {
-    Column {
-        Stack() {
-            SVGImageView(model: this.model)
-        }
-        Button("Image渲染测试").onClick({
-             => this.model.setCSS("#path961 {stroke-width:"+"11.25"+";}", globalAbilityContext)
-        }
-
-        )
-    }.width(50.percent).height(70.percent).backgroundColor(Color.WHITE)
-}
+    func build() {
+        Column {
+            Stack() {
+                SVGImageView(model: this.model)
+            }
+            Button("Image渲染测试").onClick(
+                {
+                    =>
+                    flag = !flag
+                    if (flag) {
+                        this.model.setCSS("#path972 {stroke:" + "red" + ";}", globalAbilityContext)
+                    } else {
+                        this.model.setCSS("#path972 {stroke:" + "green" + ";}", globalAbilityContext)
+                    }
+                }
+            )
+        }.width(100.percent).height(70.percent).backgroundColor(Color.WHITE)
+    }
 }

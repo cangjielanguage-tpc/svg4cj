@@ -286,7 +286,7 @@ public class Style {
                             style.specifiedFlags |= SPECIFIED_DIRECTION
                         }
 
-                    case "text_anchor" =>
+                    case "textanchor" =>
                         style.textAnchor = parseTextAnchor(val)
                         if (style.textAnchor != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_ANCHOR

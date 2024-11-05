@@ -487,7 +487,7 @@ class SVGLength {
             case "in" => return this.value * renderer.getDPI()
             case "cm" => return this.value * renderer.getDPI() / 2.54
             case "mm" => return this.value * renderer.getDPI() / 25.4
-            case "pt" => return this.value * renderer.getDPI() / 72.0
+            case "pt" => return this.value
             case "pc" => return this.value * renderer.getDPI() / 6.0
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
@@ -506,9 +506,9 @@ class SVGLength {
             case "em" => return this.value * renderer.getCurrentFontSize()
             case "ex" => return this.value * renderer.getCurrentFontXHeight()
             case "in" => return this.value * renderer.getDPI() / pxTovp
-            case "cm" => return (this.value * renderer.getDPI() / 2.53) / pxTovp
+            case "cm" => return (this.value * renderer.getDPI() / 2.54) / pxTovp
             case "mm" => return (this.value * renderer.getDPI() / 25.4) / pxTovp
-            case "pt" => return (this.value * renderer.getDPI() / 72.0) / pxTovp
+            case "pt" => return this.value / pxTovp
             case "pc" => return (this.value * renderer.getDPI() / 6.0) / pxTovp
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
@@ -517,7 +517,6 @@ class SVGLength {
                 } else {
                     return (this.value * viewPortUser.width / 100.0) / pxTovp
                 }
-            case "px" => return this.value / pxTovp
             case _ => return this.value / pxTovp
         }
     }
@@ -566,12 +565,8 @@ class SVGLength {
             case "in" => return this.value * dpi
             case "cm" => return this.value * dpi / 2.54
             case "mm" => return this.value * dpi / 25.4
-            case "pt" => return this.value * dpi / 72.0
+            case "pt" => return this.value
             case "pc" => return this.value * dpi / 6.0
-            case "px" => return this.value
-            case "em" => return this.value
-            case "ex" => return this.value
-            case "percent" => return this.value
             case _ => return this.value
         }
     }

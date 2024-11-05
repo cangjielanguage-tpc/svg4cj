@@ -215,6 +215,15 @@ class Index {
                 Button("RenderAbstract").fontSize(14).onClick {
                     => Router.push(url: "RenderAbstract")
                 }
+                Button("BugfixA").fontSize(14).onClick {
+                    => Router.push(url: "BugfixA")
+                }
+                Button("BugfixFeColorMatrix").fontSize(14).onClick {
+                    => Router.push(url: "BugfixFeColorMatrix")
+                }
+                Button("BugfixFeDiffuseLighting").fontSize(14).onClick {
+                    => Router.push(url: "BugfixFeDiffuseLighting")
+                }
             }.width(100.percent).backgroundColor(Color(0xFFF1A493))
         }.scrollable(ScrollDirection.Vertical)
     }
