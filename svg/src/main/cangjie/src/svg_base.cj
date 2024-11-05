@@ -1057,7 +1057,7 @@ class Mask <: SvgConditionalContainer & NotDirectlyRendered {
     }
     var maskUnitsAreUser: Bool = false
     var boolean: Bool = false
-    var maskContentUnitsAreUser: Bool = false
+    var maskContentUnitsAreUser: ?Bool = None
     var x: SVGLength = SVGLength()
     var y: SVGLength = SVGLength()
     var width: SVGLength = SVGLength()

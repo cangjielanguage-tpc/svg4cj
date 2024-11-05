@@ -3,7 +3,9 @@
  */
 package svg.xml
 
-internal import std.collection.{ArrayList, HashMap}
+internal import std.collection.*
+internal import std.collection.concurrent.*
+internal import std.sync.*
 internal import std.io.{InputStream, OutputStream}
 
 public let W3_XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace"

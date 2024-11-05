@@ -5,7 +5,7 @@
 <p align="center">
 <img alt="" src="https://img.shields.io/badge/release-v0.0.1-brightgreen" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/build-pass-brightgreen" style="display: inline-block;" />
-<img alt="" src="https://img.shields.io/badge/cjc-v0.53.12-brightgreen" style="display: inline-block;" />
+<img alt="" src="https://img.shields.io/badge/cjc-v0.53.13-brightgreen" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/cjcov-NA-red" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/project-open-brightgreen" style="display: inline-block;" />
 </p>
@@ -140,10 +140,12 @@ class RenderMerman {
 
 在下述版本验证通过：
 
-    DevEco Studio NEXT Beta1(5.0.3.900) 
-    Cangjie Support Plugin 5.0.3.900
+    DevEco Studio NEXT Beta1(5.0.3.910)
+    Cangjie Support Plugin 5.0.3.906
 
-1. 只支持 SVG 1.1 规范格式图像中的以下元素：
+1. 目前使用本库在渲染 SVG 图像时，只能渲染图像的轮廓(stroke)效果， 填充(fill)效果暂未支持。
+
+2. 只支持 SVG 1.1 规范格式图像中的以下元素：
 ```text
    <svg>
    <g>

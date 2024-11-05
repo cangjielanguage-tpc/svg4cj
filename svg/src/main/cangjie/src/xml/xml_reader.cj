@@ -71,6 +71,10 @@ class XmlReader {
         }
 
         readUntilEvent()
+        if (buf.size == 0 && buf.tryFill(1) == false) {
+            status = Status.EOF
+            return None
+        }
         status = match (buf[0]) {
             case b'<' => match (buf[1]) {
                 case b'?' => match (buf.strcmp(2, BA_XML_S)) {
@@ -251,7 +255,7 @@ class XmlReader {
             let equals = qname.prefix == qnamepeek.prefix && qname.local == qnamepeek.local
             if (!equals) {
                 throw XmlException(
-                    "Failed to read XML element end tag, expect name `${stack.peek().getFullName()}}` but found `${qname.getFullName()}`."
+                    "Failed to read XML element end tag, expect name `${stack.peek().getFullName()}` but found `${qname.getFullName()}`."
                 )
             }
 
@@ -347,10 +351,10 @@ class XmlReader {
         readByte(b'=')
         let uri = match (buf[0]) {
             case b'"' =>
-                buf.skip(1);
+                buf.skip(1)
                 buf.readUntil(b'"')
             case b'\'' =>
-                buf.skip(1);
+                buf.skip(1)
                 buf.readUntil(b'\'')
             case _ => throw XmlException("Failed to read namespace ${prefix}, `'` or `\"` was required.")
         }
@@ -401,10 +405,10 @@ class XmlReader {
 
         let value = match (buf[0]) {
             case b'"' =>
-                buf.skip(1);
+                buf.skip(1)
                 buf.readUntil(b'"')
             case b'\'' =>
-                buf.skip(1);
+                buf.skip(1)
                 buf.readUntil(b'\'')
             case _ => throw XmlException("Failed to read value of `${name}` from `${buf}`, `'` or `\"` was required.")
         }
@@ -420,7 +424,7 @@ class XmlReader {
     private func readQname(): QName {
         var i = 0
         var prefix: String = ""
-        while (buf[i] != b'=' && buf[i] != b' ' && buf[i] != b'>') {
+        while (buf[i] != b'=' && buf[i] != b' ' && buf[i] != b'>' && buf[i] != b'\n' && buf[i] != b'\t') {
             if (buf[i] == b':') {
                 prefix = buf.read(i)
                 buf.skip(1)
