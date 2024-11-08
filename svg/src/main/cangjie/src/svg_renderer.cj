@@ -765,7 +765,11 @@ public class SVGRenderer {
         this.state.style.opacity = 1.0
         let compositing: Bool = pushLayer()
         this.canvas.save()
-        let maskContentUnitsAreUser: Bool = mask.maskContentUnitsAreUser
+        let maskContentUnitsAreUser: Bool = if (mask.maskContentUnitsAreUser.isNone()) {
+            true
+        } else {
+            mask.maskContentUnitsAreUser()
+        }
         if (!maskContentUnitsAreUser) {
             this.canvas.translate(originalObjBBox.minX, originalObjBBox.minY, Paint(Option<Paint>.None))
             this.canvas.scale(originalObjBBox.width, originalObjBBox.height, Paint(Option<Paint>.None))
