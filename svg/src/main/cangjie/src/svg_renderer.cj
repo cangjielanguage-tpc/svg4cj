@@ -725,6 +725,7 @@ public class SVGRenderer {
             this.canvas.restore()
         }
         statePop()
+        this.canvas.restore()
     }
 
     private func renderMask(mask: Mask, obj: SvgElement, context: ?AbilityContext,
@@ -1711,6 +1712,9 @@ public class SVGRenderer {
         if (!display()) {
             return
         }
+        if (!visible()) {
+            return
+        }
         if (let Some(v) <- obj.transform) {
             this.canvas.concat(v)
         }
@@ -1737,7 +1741,8 @@ public class SVGRenderer {
         checkForGradientsAndPatterns(obj)
         checkForClipPath(obj)
         let compositing: Bool = pushLayer()
-        enumerateTextSpans(obj, PlainTextDrawer(x + dx, y + dy), context)
+        let textAnchor: String = state.style.textAnchor.toAsciiLower()
+        enumerateTextSpans(obj, PlainTextDrawer(x, y, dx, dy, textAnchor), context)
         if (compositing) {
             popLayer(obj, context)
         }
@@ -1787,6 +1792,11 @@ public class SVGRenderer {
                     }
                 } else {}
             }
+            statePop()
+        } else if (let Some(t) <- obj as Text2) {
+            statePush()
+            updateStyleForElement(this.state, t)
+            textprocessor.processText(textXMLSpaceTransform(t.text, true, true), this.state, this.canvas)
             statePop()
         }
     }
@@ -2644,8 +2654,8 @@ public class SVGRenderer {
 
 public class RendererState {
     var style: Style
-    var hasFill: Bool = true
-    var hasStroke: Bool = false
+    var hasFill: Bool = false
+    var hasStroke: Bool = true
     var viewPort: Box = Box(0.0, 0.0, 0.0, 0.0)
     var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
     var fillPaint: Paint
@@ -2687,27 +2697,40 @@ abstract class TextProcessor {
 class PlainTextDrawer <: TextProcessor {
     private var x: Float64 = 0.0
     private var y: Float64 = 0.0
+    private var dx: Float64 = 0.0
+    private var dy: Float64 = 0.0
+    private var textAnchor: String = ""
 
-    init(x: Float64, y: Float64) {
+    init(x: Float64, y: Float64, dx: Float64, dy: Float64, textAnchor: String) {
         super()
         this.x = x
         this.y = y
+        this.dx = dx
+        this.dy = dy
+        this.textAnchor = textAnchor
     }
 
     public func processText(text: String, state: RendererState, canvas: CanvasImpl): Unit {
+        if (!textAnchor.isEmpty()) {
+            let textWidth: Float64 = canvas.getContext().measureText(text).width / pxTovp
+            if (textAnchor == "middle") {
+                x -= (textWidth / 2.0)
+            } else if (textAnchor == "end") {
+                x -= textWidth
+            }
+        }
         if (visible(state)) {
             // Android/Skia divides letterspacing and puts half before and after each letter.
             // We need to readjust initial text X position to counter that.
-            let letterspacingAdj = 0.0
+            let letterspacingAdj: Float64 = 2.5
             if (state.hasFill) {
-                canvas.drawText(text, this.x - letterspacingAdj, this.y, state.fillPaint)
+                canvas.drawText(text, x + dx - letterspacingAdj, y + dy, state.fillPaint)
             }
             if (state.hasStroke) {
-                canvas.drawText(text, this.x - letterspacingAdj, this.y, state.strokePaint)
+                canvas.drawText(text, x + dx - letterspacingAdj, y + dy, state.strokePaint)
             }
         }
-        // Update the current text position
-        this.x += canvas.getContext().measureText(text).width
+        x += canvas.getContext().measureText(text).width / pxTovp
     }
 
     private func visible(state: RendererState): Bool {

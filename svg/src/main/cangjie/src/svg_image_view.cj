@@ -18,14 +18,18 @@ public class SVGImageView {
 
     @Builder
     func setSvgCanvas(b: Bool) {
-        Canvas(this.context2D).width(100.percent).height(100.percent).onReady(
+        Canvas(this.context2D).width(100.percent).height(100.percent).onAreaChange(
+            {
+                oldArea: Area, newArea: Area =>
+                this.model.viewWidth = newArea.width / pxTovp
+                this.model.viewHeight = newArea.height / pxTovp
+            }
+        ).onReady(
             {
                 =>
                 this.model.setContext2D(this.context2D)
                 //                this.model.viewWidth = this.context2D.width TODO..
-                this.model.viewWidth = 153
                 //                this.model.viewHeight = this.context2D.height TODO..
-                this.model.viewHeight = 360
                 this.model.doRender(this.model.context, areaChanged: true)
             }
         )
@@ -54,8 +58,8 @@ public class SVGImageViewModel {
     var context2D: CanvasRenderingContext2D = CanvasRenderingContext2D(settings)
     var canvas: CanvasImpl = CanvasImpl(this.context2D)
     var render: ?SVGRenderer = Option<SVGRenderer>.None
-    var viewWidth: Int32 = getDefaultDisplaySync().width
-    var viewHeight: Int32 = getDefaultDisplaySync().height
+    var viewWidth: Float64 = Float64(getDefaultDisplaySync().width) / pxTovp
+    var viewHeight: Float64 = Float64(getDefaultDisplaySync().height) / pxTovp
     var context: ?AbilityContext = Option<AbilityContext>.None
     var scaleX: Float64 = 0.0
     var scaleY: Float64 = 0.0
@@ -140,8 +144,8 @@ public class SVGImageViewModel {
             if (this.needScale || areaChanged) {
                 let viewBoxWidth = v.getRootElement().viewBox.width / pxTovp
                 let viewBoxHeight = v.getRootElement().viewBox.height / pxTovp
-                let xScale = Float64(this.viewWidth) / viewBoxWidth
-                let yScale = Float64(this.viewHeight) / viewBoxHeight
+                let xScale = this.viewWidth / viewBoxWidth
+                let yScale = this.viewHeight / viewBoxHeight
                 this.scaleX = min(xScale, yScale)
                 this.scaleY = min(xScale, yScale)
                 this.context2D.scale(this.scaleX, this.scaleY)

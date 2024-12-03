@@ -29,14 +29,14 @@ public class MiniCanvas {
 
 public class Paint {
     private var offScreen: Bool = false
-    private var stroke: Bool = false
+    private var stroke: Bool = true
     private var alpha: Float64 = 1.0
     private var color: Color = Color(0x000000)
     private var strokeWidth: Float64 = 2.0
     private var fontAlign: TextAlignStyle = TextAlignStyle.Start
-    private var fontBaseline: TextBaseline = TextBaseline.Top
+    private var fontBaseline: TextBaseline = TextBaseline.Alphabetic
     private var fontSize: Float64 = 20.0 * pxTovp
-    private var fontStyle: FontStyle = FontStyle.Italic
+    private var fontStyle: FontStyle = FontStyle.Normal
     private var fontWeight: FontWeight = FontWeight.Normal
     private var fontFamily: String = "sans-serif"
     private var shadowBlur: Int64 = 0
@@ -78,7 +78,7 @@ public class Paint {
     }
 
     func getFontSize(): Float64 {
-        return this.fontSize
+        return this.fontSize / pxTovp
     }
 
     func setGradient(gr: CanvasGradient): Unit {
@@ -227,7 +227,7 @@ public class Paint {
     }
 
     func getStrokeWidth(): Float64 {
-        return this.strokeWidth
+        return this.strokeWidth / pxTovp
     }
 
     func setFontAlign(fontAlign: TextAlignStyle): Paint {
@@ -496,7 +496,7 @@ public class CanvasImpl <: ICanvas {
                 }
                 // TODO..
                 // this.context.fill(path)
-                this.context.fill()
+                this.context.stroke(path)
             }
         }
     }
