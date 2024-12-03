@@ -2723,11 +2723,16 @@ class PlainTextDrawer <: TextProcessor {
             // Android/Skia divides letterspacing and puts half before and after each letter.
             // We need to readjust initial text X position to counter that.
             let letterspacingAdj: Float64 = 2.5
+            let opt: Float64 = if ((x + dx) > letterspacingAdj) {
+                x + dx - letterspacingAdj
+            } else {
+                x + dx
+            }
             if (state.hasFill) {
-                canvas.drawText(text, x + dx - letterspacingAdj, y + dy, state.fillPaint)
+                canvas.drawText(text, opt, y + dy, state.fillPaint)
             }
             if (state.hasStroke) {
-                canvas.drawText(text, x + dx - letterspacingAdj, y + dy, state.strokePaint)
+                canvas.drawText(text, opt, y + dy, state.strokePaint)
             }
         }
         x += canvas.getContext().measureText(text).width / pxTovp

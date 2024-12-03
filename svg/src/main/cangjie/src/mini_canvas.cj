@@ -35,7 +35,7 @@ public class Paint {
     private var strokeWidth: Float64 = 2.0
     private var fontAlign: TextAlignStyle = TextAlignStyle.Start
     private var fontBaseline: TextBaseline = TextBaseline.Alphabetic
-    private var fontSize: Float64 = 20.0 * pxTovp
+    private var fontSize: Float64 = 17.0 * pxTovp
     private var fontStyle: FontStyle = FontStyle.Normal
     private var fontWeight: FontWeight = FontWeight.Normal
     private var fontFamily: String = "sans-serif"
