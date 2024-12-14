@@ -57,14 +57,14 @@ public class CSSTextScanner <: TextScanner {
                 if (!skipCommaWhitespace()) {
                     continue
                 }
-                selectorGroup.append(selector)
+                selectorGroup.add(selector)
                 selector = Selector()
             } else {
                 break
             }
         }
         if (!selector.isEmpty()) {
-            selectorGroup.append(selector)
+            selectorGroup.add(selector)
         }
         return selectorGroup
     }
@@ -278,7 +278,7 @@ public class CSSTextScanner <: TextScanner {
                 position = start
                 return ArrayList<String>()
             }
-            result.append(ident)
+            result.add(ident)
             skipWhitespace()
         } while (skipCommaWhitespace())
         if (consume(')')) {
@@ -483,12 +483,12 @@ public class CSSTextScanner <: TextScanner {
                         }
                         codepoint = codepoint * 16 + hc
                     }
-                    arr.appendAll(codepoint.toString().toArray())
+                    arr.add(all: codepoint.toString().toArray())
                 }
                 // Other chars just unescape to themselves
                 // Fall through to append
             }
-            arr.append(byte)
+            arr.add(byte)
             byte = nextChar()
         }
         return unsafe { String.fromUtf8Unchecked(arr.getRawArray()[..arr.size]) }
@@ -573,13 +573,13 @@ public class CSSTextScanner <: TextScanner {
                         position++
                         codepoint = codepoint * 16 + hc
                     }
-                    arr.appendAll(codepoint.toString().toArray())
+                    arr.add(all: codepoint.toString().toArray())
                     continue
                 }
                 // Other chars just unescape to themselves
                 // Fall through to append
             }
-            arr.append(byte)
+            arr.add(byte)
         }
         if (arr.size == 0) {
             return ""

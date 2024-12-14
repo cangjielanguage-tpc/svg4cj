@@ -87,60 +87,60 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     static var LIGATURES_NORMAL: CSSFontFeatureSettings = {
         =>
         let LIGATURES_NORMAL = CSSFontFeatureSettings()
-        LIGATURES_NORMAL.settings.put(FEATURE_LIGA, VALUE_ON)
-        LIGATURES_NORMAL.settings.put(FEATURE_CLIG, VALUE_ON)
-        LIGATURES_NORMAL.settings.put(FEATURE_DLIG, VALUE_OFF)
-        LIGATURES_NORMAL.settings.put(FEATURE_HLIG, VALUE_OFF)
-        LIGATURES_NORMAL.settings.put(FEATURE_CALT, VALUE_ON)
+        LIGATURES_NORMAL.settings.add(FEATURE_LIGA, VALUE_ON)
+        LIGATURES_NORMAL.settings.add(FEATURE_CLIG, VALUE_ON)
+        LIGATURES_NORMAL.settings.add(FEATURE_DLIG, VALUE_OFF)
+        LIGATURES_NORMAL.settings.add(FEATURE_HLIG, VALUE_OFF)
+        LIGATURES_NORMAL.settings.add(FEATURE_CALT, VALUE_ON)
         return LIGATURES_NORMAL
     }()
 
     static var POSITION_ALL_OFF: CSSFontFeatureSettings = {
         =>
         let POSITION_ALL_OFF = CSSFontFeatureSettings()
-        POSITION_ALL_OFF.settings.put(FEATURE_SUBS, VALUE_OFF)
-        POSITION_ALL_OFF.settings.put(FEATURE_SUPS, VALUE_OFF)
+        POSITION_ALL_OFF.settings.add(FEATURE_SUBS, VALUE_OFF)
+        POSITION_ALL_OFF.settings.add(FEATURE_SUPS, VALUE_OFF)
         return POSITION_ALL_OFF
     }()
 
     static var CAPS_ALL_OFF: CSSFontFeatureSettings = {
         =>
         let CAPS_ALL_OFF = CSSFontFeatureSettings()
-        CAPS_ALL_OFF.settings.put(FEATURE_SMCP, VALUE_OFF)
-        CAPS_ALL_OFF.settings.put(FEATURE_C2SC, VALUE_OFF)
-        CAPS_ALL_OFF.settings.put(FEATURE_PCAP, VALUE_OFF)
-        CAPS_ALL_OFF.settings.put(FEATURE_C2PC, VALUE_OFF)
-        CAPS_ALL_OFF.settings.put(FEATURE_UNIC, VALUE_OFF)
-        CAPS_ALL_OFF.settings.put(FEATURE_TITL, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_SMCP, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_C2SC, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_PCAP, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_C2PC, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_UNIC, VALUE_OFF)
+        CAPS_ALL_OFF.settings.add(FEATURE_TITL, VALUE_OFF)
         return CAPS_ALL_OFF
     }()
 
     static var NUMERIC_ALL_OFF: CSSFontFeatureSettings = {
         =>
         let NUMERIC_ALL_OFF = CSSFontFeatureSettings()
-        NUMERIC_ALL_OFF.settings.put(FEATURE_LNUM, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_ONUM, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_PNUM, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_TNUM, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_FRAC, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_AFRC, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_ORDN, VALUE_OFF)
-        NUMERIC_ALL_OFF.settings.put(FEATURE_ZERO, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_LNUM, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_ONUM, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_PNUM, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_TNUM, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_FRAC, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_AFRC, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_ORDN, VALUE_OFF)
+        NUMERIC_ALL_OFF.settings.add(FEATURE_ZERO, VALUE_OFF)
         return NUMERIC_ALL_OFF
     }()
 
     static var EAST_ASIAN_ALL_OFF: CSSFontFeatureSettings = {
         =>
         let EAST_ASIAN_ALL_OFF = CSSFontFeatureSettings()
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_JP78, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_JP83, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_JP90, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_JP04, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_SMPL, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_TRAD, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_FWID, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_PWID, VALUE_OFF)
-        EAST_ASIAN_ALL_OFF.settings.put(FEATURE_RUBY, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_JP78, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_JP83, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_JP90, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_JP04, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_SMPL, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_TRAD, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_FWID, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_PWID, VALUE_OFF)
+        EAST_ASIAN_ALL_OFF.settings.add(FEATURE_RUBY, VALUE_OFF)
         return EAST_ASIAN_ALL_OFF
     }()
 
@@ -163,14 +163,14 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         if (featureSettings.isNone()) {
             return
         }
-        this.settings.putAll(featureSettings().settings)
+        this.settings.add(all: featureSettings().settings)
     }
 
     public func applyKerning(kern: String): Unit {
         if (kern == FontKerning.none) {
-            this.settings.put(FEATURE_KERN, VALUE_OFF)
+            this.settings.add(FEATURE_KERN, VALUE_OFF)
         } else {
-            this.settings.put(FEATURE_KERN, VALUE_ON)
+            this.settings.add(FEATURE_KERN, VALUE_ON)
         }
     }
 
@@ -204,7 +204,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
             if (entry == FontFeatureEntry()) {
                 return CSSFontFeatureSettings()
             }
-            result.settings.put(entry.name, entry.val)
+            result.settings.add(entry.name, entry.val)
             scan.skipCommaWhitespace()
         }
         return result
@@ -255,7 +255,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         }
         let result: ArrayList<String> = ArrayList<String>()
         while (!scan.empty()) {
-            result.append(scan.nextToken())
+            result.add(scan.nextToken())
             scan.skipWhitespace()
         }
         return result
@@ -290,7 +290,7 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     static func removeElement(arr: ArrayList<String>, element: String): Bool {
         for (i in 0..arr.size) {
             if (arr[i] == element) {
-                arr.remove(i)
+                arr.remove(at: i)
                 return true
             }
         }
@@ -346,10 +346,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
         match (containsWhich(tokens, FONT_VARIANT_DISCRETIONARY_LIGATURES, FONT_VARIANT_NO_DISCRETIONARY_LIGATURES)) {
             case 1 =>
-                result.settings.put(FEATURE_DLIG, VALUE_ON)
+                result.settings.add(FEATURE_DLIG, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_DLIG, VALUE_OFF)
+                result.settings.add(FEATURE_DLIG, VALUE_OFF)
                 found = true
             case 3 => return ERROR
 
@@ -358,10 +358,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
         match (containsWhich(tokens, FONT_VARIANT_HISTORICAL_LIGATURES, FONT_VARIANT_NO_HISTORICAL_LIGATURES)) {
             case 1 =>
-                result.settings.put(FEATURE_HLIG, VALUE_ON)
+                result.settings.add(FEATURE_HLIG, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_HLIG, VALUE_OFF)
+                result.settings.add(FEATURE_HLIG, VALUE_OFF)
                 found = true
             case 3 => return ERROR
             case _ => ()
@@ -369,10 +369,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
         match (containsWhich(tokens, FONT_VARIANT_CONTEXTUAL_LIGATURES, FONT_VARIANT_NO_CONTEXTUAL_LIGATURES)) {
             case 1 =>
-                result.settings.put(FEATURE_CALT, VALUE_ON)
+                result.settings.add(FEATURE_CALT, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_CALT, VALUE_OFF)
+                result.settings.add(FEATURE_CALT, VALUE_OFF)
                 found = true
             case 3 => return ERROR
             case _ => ()
@@ -386,8 +386,8 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
     }
 
     private func addSettings(feature1: String, feature2: String, onOrOff: Int64): Unit {
-        this.settings.put(feature1, onOrOff)
-        this.settings.put(feature2, onOrOff)
+        this.settings.add(feature1, onOrOff)
+        this.settings.add(feature2, onOrOff)
     }
 
     static func parseVariantPosition(val: String): CSSFontFeatureSettings {
@@ -396,8 +396,8 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         }
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings(POSITION_ALL_OFF)
         match (val) {
-            case FONT_VARIANT_SUB => result.settings.put(FEATURE_SUBS, VALUE_ON)
-            case FONT_VARIANT_SUPER => result.settings.put(FEATURE_SUPS, VALUE_ON)
+            case FONT_VARIANT_SUB => result.settings.add(FEATURE_SUBS, VALUE_ON)
+            case FONT_VARIANT_SUPER => result.settings.add(FEATURE_SUPS, VALUE_ON)
             case _ => return CSSFontFeatureSettings()
         }
         return result
@@ -408,10 +408,10 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         var found: Bool = false
         match (containsWhich(tokens, FONT_VARIANT_SUB, FONT_VARIANT_SUPER)) {
             case 1 =>
-                result.settings.put(FEATURE_SUBS, VALUE_ON)
+                result.settings.add(FEATURE_SUBS, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_SUPS, VALUE_ON)
+                result.settings.add(FEATURE_SUPS, VALUE_ON)
                 found = true
             case 3 => return ERROR
             case _ => ()
@@ -435,12 +435,12 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
     private static func setCapsFeature(result: CSSFontFeatureSettings, val: String): Bool {
         match (val) {
-            case FONT_VARIANT_SMALL_CAPS => result.settings.put(FEATURE_SMCP, VALUE_ON)
+            case FONT_VARIANT_SMALL_CAPS => result.settings.add(FEATURE_SMCP, VALUE_ON)
             case FONT_VARIANT_ALL_SMALL_CAPS => result.addSettings(FEATURE_SMCP, FEATURE_C2SC, VALUE_ON)
-            case FONT_VARIANT_PETITE_CAPS => result.settings.put(FEATURE_PCAP, VALUE_ON)
+            case FONT_VARIANT_PETITE_CAPS => result.settings.add(FEATURE_PCAP, VALUE_ON)
             case FONT_VARIANT_ALL_PETITE_CAPS => result.addSettings(FEATURE_PCAP, FEATURE_C2PC, VALUE_ON)
-            case FONT_VARIANT_UNICASE => result.settings.put(FEATURE_UNIC, VALUE_ON)
-            case FONT_VARIANT_TITLING_CAPS => result.settings.put(FEATURE_TITL, VALUE_ON)
+            case FONT_VARIANT_UNICASE => result.settings.add(FEATURE_UNIC, VALUE_ON)
+            case FONT_VARIANT_TITLING_CAPS => result.settings.add(FEATURE_TITL, VALUE_ON)
             case _ => return false
         }
         return true
@@ -477,44 +477,44 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         var found: Bool = false
         match (containsWhich(tokens, FONT_VARIANT_LINING_NUMS, FONT_VARIANT_OLDSTYLE_NUMS)) {
             case 1 =>
-                result.settings.put(FEATURE_LNUM, VALUE_ON)
+                result.settings.add(FEATURE_LNUM, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_ONUM, VALUE_ON)
+                result.settings.add(FEATURE_ONUM, VALUE_ON)
                 found = true
             case 3 => return ERROR
             case _ => ()
         }
         match (containsWhich(tokens, FONT_VARIANT_PROPORTIONAL_NUMS, FONT_VARIANT_TABULAR_NUMS)) {
             case 1 =>
-                result.settings.put(FEATURE_PNUM, VALUE_ON)
+                result.settings.add(FEATURE_PNUM, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_PNUM, VALUE_ON)
+                result.settings.add(FEATURE_PNUM, VALUE_ON)
                 found = true
             case 3 => return ERROR
             case _ => ()
         }
         match (containsWhich(tokens, FONT_VARIANT_DIAGONAL_FRACTIONS, FONT_VARIANT_STACKED_FRACTIONS)) {
             case 1 =>
-                result.settings.put(FEATURE_FRAC, VALUE_ON)
+                result.settings.add(FEATURE_FRAC, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_FRAC, VALUE_ON)
+                result.settings.add(FEATURE_FRAC, VALUE_ON)
                 found = true
             case 3 => return ERROR
             case _ => ()
         }
         match (containsOnce(tokens, FONT_VARIANT_ORDINAL)) {
             case 1 =>
-                result.settings.put(FEATURE_ORDN, VALUE_ON)
+                result.settings.add(FEATURE_ORDN, VALUE_ON)
                 found = true
             case 2 => return ERROR
             case _ => ()
         }
         match (containsOnce(tokens, FONT_VARIANT_SLASHED_ZERO)) {
             case 1 =>
-                result.settings.put(FEATURE_ZERO, VALUE_ON)
+                result.settings.add(FEATURE_ZERO, VALUE_ON)
                 found = true
             case 2 => return ERROR
             case _ => ()
@@ -547,28 +547,28 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         let which: String = containsOneOf(tokens, FONT_VARIANT_JIS78, FONT_VARIANT_JIS83, FONT_VARIANT_JIS90,
             FONT_VARIANT_JIS04, FONT_VARIANT_SIMPLIFIED, FONT_VARIANT_TRADITIONAL)
         match (which) {
-            case FONT_VARIANT_JIS78 => result.settings.put(FEATURE_JP78, VALUE_ON)
-            case FONT_VARIANT_JIS83 => result.settings.put(FEATURE_JP83, VALUE_ON)
-            case FONT_VARIANT_JIS90 => result.settings.put(FEATURE_JP90, VALUE_ON)
-            case FONT_VARIANT_JIS04 => result.settings.put(FEATURE_JP04, VALUE_ON)
-            case FONT_VARIANT_SIMPLIFIED => result.settings.put(FEATURE_SMPL, VALUE_ON)
-            case FONT_VARIANT_TRADITIONAL => result.settings.put(FEATURE_TRAD, VALUE_ON)
+            case FONT_VARIANT_JIS78 => result.settings.add(FEATURE_JP78, VALUE_ON)
+            case FONT_VARIANT_JIS83 => result.settings.add(FEATURE_JP83, VALUE_ON)
+            case FONT_VARIANT_JIS90 => result.settings.add(FEATURE_JP90, VALUE_ON)
+            case FONT_VARIANT_JIS04 => result.settings.add(FEATURE_JP04, VALUE_ON)
+            case FONT_VARIANT_SIMPLIFIED => result.settings.add(FEATURE_SMPL, VALUE_ON)
+            case FONT_VARIANT_TRADITIONAL => result.settings.add(FEATURE_TRAD, VALUE_ON)
             case TOKEN_ERROR => return ERROR
         }
         found = true
         match (containsWhich(tokens, FONT_VARIANT_FULL_WIDTH, FONT_VARIANT_PROPORTIONAL_WIDTH)) {
             case 1 =>
-                result.settings.put(FEATURE_FWID, VALUE_ON)
+                result.settings.add(FEATURE_FWID, VALUE_ON)
                 found = true
             case 2 =>
-                result.settings.put(FEATURE_PWID, VALUE_ON)
+                result.settings.add(FEATURE_PWID, VALUE_ON)
                 found = true
             case 3 => return ERROR
             case _ => ()
         }
         match (containsOnce(tokens, FONT_VARIANT_RUBY)) {
             case 1 =>
-                result.settings.put(FEATURE_RUBY, VALUE_ON)
+                result.settings.add(FEATURE_RUBY, VALUE_ON)
                 found = true
             case 2 => return ERROR
             case _ => ()
@@ -675,14 +675,14 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
 
     static func makeDefaultSettings(): CSSFontFeatureSettings {
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings()
-        result.settings.put("rlig", 1)
-        result.settings.put(FEATURE_LIGA, 1)
-        result.settings.put(FEATURE_CLIG, 1)
-        result.settings.put(FEATURE_CALT, 1)
-        result.settings.put("locl", 1)
-        result.settings.put("ccmp", 1)
-        result.settings.put("mark", 1)
-        result.settings.put("mkmk", 1)
+        result.settings.add("rlig", 1)
+        result.settings.add(FEATURE_LIGA, 1)
+        result.settings.add(FEATURE_CLIG, 1)
+        result.settings.add(FEATURE_CALT, 1)
+        result.settings.add("locl", 1)
+        result.settings.add("ccmp", 1)
+        result.settings.add("mark", 1)
+        result.settings.add("mkmk", 1)
         return result
     }
 
@@ -691,19 +691,19 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
             return
         }
         let result: CSSFontFeatureSettings = CSSFontFeatureSettings()
-        result.settings.put(FEATURE_LIGA, VALUE_OFF)
-        result.settings.put(FEATURE_CLIG, VALUE_OFF)
-        result.settings.put(FEATURE_DLIG, VALUE_OFF)
-        result.settings.put(FEATURE_HLIG, VALUE_OFF)
-        result.settings.put(FEATURE_CALT, VALUE_OFF)
+        result.settings.add(FEATURE_LIGA, VALUE_OFF)
+        result.settings.add(FEATURE_CLIG, VALUE_OFF)
+        result.settings.add(FEATURE_DLIG, VALUE_OFF)
+        result.settings.add(FEATURE_HLIG, VALUE_OFF)
+        result.settings.add(FEATURE_CALT, VALUE_OFF)
         LIGATURES_ALL_OFF = result
     }
 
     private func ensurePositionNormal(): Unit {
         if (POSITION_ALL_OFF == CSSFontFeatureSettings()) {
             let result: CSSFontFeatureSettings = CSSFontFeatureSettings()
-            result.settings.put(FEATURE_SUBS, VALUE_OFF)
-            result.settings.put(FEATURE_SUPS, VALUE_OFF)
+            result.settings.add(FEATURE_SUBS, VALUE_OFF)
+            result.settings.add(FEATURE_SUPS, VALUE_OFF)
             POSITION_ALL_OFF = result
         }
     }
@@ -714,12 +714,12 @@ public class CSSFontFeatureSettings <: Equatable<CSSFontFeatureSettings> {
         } else {
             let v = CSSFontFeatureSettings()
             CAPS_SMALL_CAPS = v
-            v.settings.put(FEATURE_SMCP, VALUE_ON)
-            v.settings.put(FEATURE_C2SC, VALUE_OFF)
-            v.settings.put(FEATURE_PCAP, VALUE_OFF)
-            v.settings.put(FEATURE_C2PC, VALUE_OFF)
-            v.settings.put(FEATURE_UNIC, VALUE_OFF)
-            v.settings.put(FEATURE_TITL, VALUE_OFF)
+            v.settings.add(FEATURE_SMCP, VALUE_ON)
+            v.settings.add(FEATURE_C2SC, VALUE_OFF)
+            v.settings.add(FEATURE_PCAP, VALUE_OFF)
+            v.settings.add(FEATURE_C2PC, VALUE_OFF)
+            v.settings.add(FEATURE_UNIC, VALUE_OFF)
+            v.settings.add(FEATURE_TITL, VALUE_OFF)
             v
         }
     }

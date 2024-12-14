@@ -57,7 +57,7 @@ class CSSParser {
                 break
             }
             try {
-                typeList.append(types)
+                typeList.add(types)
             } catch (e: Exception) {}
             if (!scan.skipCommaWhitespace()) {
                 break
@@ -212,7 +212,7 @@ class CSSParser {
             if (className == "") {
                 continue
             }
-            classNameList.append(className)
+            classNameList.add(className)
             scan.skipWhitespace()
         }
         return classNameList
@@ -225,9 +225,9 @@ class CSSParser {
         let ancestors: ArrayList<SvgContainer> = ArrayList<SvgContainer>()
         var parent: ?SvgContainer = obj.parent
         while (let Some(v) <- parent) {
-            ancestors.append(v)
+            ancestors.add(v)
             // @ts-ignore
-            if (let Some(k) <- v as SvgObject) {
+            if (let Some(k) <- (v as SvgObject)) {
                 parent = k.parent
             }
         }
@@ -354,11 +354,11 @@ class RuleSet {
         for (i in 0..this.rules.size) {
             let nextRule: Rule = this.rules[i]
             if (nextRule.selector.specificity > rule.selector.specificity) {
-                this.rules.append(rule)
+                this.rules.add(rule)
                 return
             }
         }
-        this.rules.append(rule)
+        this.rules.add(rule)
     }
 
     func addAll(rules: RuleSet): Unit {
@@ -381,7 +381,7 @@ class RuleSet {
     func removeFromSource(sourceToBeRemoved: Source) {
         for (i in this.rules.size - 1..=0 : -1) {
             if (this.rules[i].source == sourceToBeRemoved) {
-                this.rules.remove(i)
+                this.rules.remove(at: i)
             }
         }
     }
@@ -522,7 +522,7 @@ class Selector {
     }
 
     func add(part: SimpleSelector): Unit {
-        this.simpleSelectors.append(part)
+        this.simpleSelectors.add(part)
     }
 
     func size(): Int64 {
@@ -581,11 +581,11 @@ class SimpleSelector {
     }
 
     func addAttrib(attrName: String, op: AttribOp, attrValue: String): Unit {
-        this.attribs.append(Attrib(attrName, op, attrValue))
+        this.attribs.add(Attrib(attrName, op, attrValue))
     }
 
     func addPseudo(pseudo: PseudoClass): Unit {
-        this.pseudos.append(pseudo)
+        this.pseudos.add(pseudo)
     }
 }
 
@@ -698,7 +698,7 @@ class PseudoClassRoot <: PseudoClass {
 class PseudoClassEmpty <: PseudoClass {
     public func matches(ruleMatchContext: ?RuleMatchContext, obj: SvgElementBase): Bool {
         // @ts-ignore
-        if (let Some(obj) <- obj as SvgContainer) {
+        if (let Some(obj) <- (obj as SvgContainer)) {
             return obj.getChildren().size == 0
         } else {
             return true

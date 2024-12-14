@@ -8,7 +8,7 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class BugfixClipPath {
+class RenderClipPath {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false

@@ -20,10 +20,6 @@ enum XmlEvent <: Equatable<XmlEvent> & ToString {
         this.toString() == other.toString()
     }
 
-    public operator func !=(other: XmlEvent): Bool {
-        this.toString() != other.toString()
-    }
-
     public override func toString(): String {
         return match (this) {
             case Decl => "Decl"

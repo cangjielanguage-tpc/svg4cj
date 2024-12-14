@@ -29,13 +29,13 @@ public class MiniCanvas {
 
 public class Paint {
     private var offScreen: Bool = false
-    private var stroke: Bool = true
+    private var stroke: Bool = false
     private var alpha: Float64 = 1.0
     private var color: Color = Color(0x000000)
     private var strokeWidth: Float64 = 2.0
     private var fontAlign: TextAlignStyle = TextAlignStyle.Start
     private var fontBaseline: TextBaseline = TextBaseline.Alphabetic
-    private var fontSize: Float64 = 17.0 * pxTovp
+    private var fontSize: Float64 = 17.0
     private var fontStyle: FontStyle = FontStyle.Normal
     private var fontWeight: FontWeight = FontWeight.Normal
     private var fontFamily: String = "sans-serif"
@@ -78,7 +78,7 @@ public class Paint {
     }
 
     func getFontSize(): Float64 {
-        return this.fontSize / pxTovp
+        return this.fontSize
     }
 
     func setGradient(gr: CanvasGradient): Unit {
@@ -227,7 +227,7 @@ public class Paint {
     }
 
     func getStrokeWidth(): Float64 {
-        return this.strokeWidth / pxTovp
+        return this.strokeWidth
     }
 
     func setFontAlign(fontAlign: TextAlignStyle): Paint {
@@ -269,7 +269,7 @@ public class Paint {
 public interface ICanvas {
     func drawLine(startX: Float64, startY: Float64, stopX: Float64, stopY: Float64, paint: ?Paint): Unit
 
-    func drawText(text: String, x: Float64, y: Float64, paint: ?Paint): Unit
+    func drawText(text: String, x: Float64, y: Float64, paint: ?Paint, maxWidth!: ?Float64): Unit
 
     func drawCircle(x: Float64, y: Float64, radius: Float64, paint: ?Paint): Unit
 
@@ -300,23 +300,26 @@ public interface ICanvas {
 
     func save(paint!: Paint): Unit
 
-    //  func clear(): Unit
-    func clear(width: Float64, height: Float64): Unit
+      func clear(): Unit
 
-    //  func getPixelMap(): PixelMap
-    func getPixelMap(width: Float64, height: Float64): PixelMap
+      func getPixelMap(): PixelMap
 }
 
 public class CanvasImpl <: ICanvas {
     private var matrix: Matrix2D2 = Matrix2D2()
     public var context: CanvasRenderingContext2D
+    public var offScreenContext: ?OffscreenCanvasRenderingContext2D = Option<OffscreenCanvasRenderingContext2D>.None
 
     init(context: CanvasRenderingContext2D) {
         this.context = context
     }
 
+    public func setOffScreenCanvas(offScreenContext: OffscreenCanvasRenderingContext2D): Unit {
+        this.offScreenContext = offScreenContext
+    }
+
     private func updateContextAttributes(context: CanvasRenderingContext2D, paint: Paint): Unit {
-        context.lineWidth(paint.getStrokeWidth())
+        context.lineWidth(paint.getStrokeWidth() / pxTovp)
         context.fillStyle(paint.getColor())
         context.strokeStyle(paint.getColor())
         context.globalAlpha(paint.getAlpha())
@@ -328,14 +331,44 @@ public class CanvasImpl <: ICanvas {
             context.shadowOffsetX(paint.getShadowOffsetX())
             context.shadowOffsetY(paint.getShadowOffsetY())
         }
-        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: Length(paint.getFontSize(), unitType: LengthType.px),
+        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: paint.getFontSize().px,
+            family: paint.getFontFamily())
+    }
+
+    private func updateOffScreenContextAttributes(context: OffscreenCanvasRenderingContext2D, paint: Paint): Unit {
+        context.lineWidth(paint.getStrokeWidth() / pxTovp)
+        context.fillStyle(paint.getColor())
+        context.strokeStyle(paint.getColor())
+        context.globalAlpha(paint.getAlpha())
+        context.textBaseline(paint.getFontBaseline())
+        context.textAlign(paint.getFontAlign())
+        if (paint.getShadowBlur() > 0) {
+            context.shadowBlur(paint.getShadowBlur())
+            context.shadowColor(paint.getShadowColor())
+            context.shadowOffsetX(paint.getShadowOffsetX())
+            context.shadowOffsetY(paint.getShadowOffsetY())
+        }
+        context.font(style: paint.getFontStyle(), weight: paint.getFontWeight(), size: paint.getFontSize().px,
             family: paint.getFontFamily())
     }
 
     public func drawLine(startX: Float64, startY: Float64, stopX: Float64, stopY: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawLineInternal(this.context, startX, startY, stopX, stopY, v)
+            if (let Some(j) <- offScreenContext) {
+                drawLineInternal(j, startX, startY, stopX, stopY, v)
+            } else {
+                drawLineInternal(context, startX, startY, stopX, stopY, v)
+            }
         }
+    }
+
+    private func drawLineInternal(context: OffscreenCanvasRenderingContext2D, startX: Float64, startY: Float64, stopX: Float64,
+        stopY: Float64, paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        context.moveTo(startX, startY)
+        context.lineTo(stopX, stopY)
+        context.stroke()
     }
 
     private func drawLineInternal(context: CanvasRenderingContext2D, startX: Float64, startY: Float64, stopX: Float64,
@@ -347,16 +380,31 @@ public class CanvasImpl <: ICanvas {
         context.stroke()
     }
 
-    public func drawText(text: String, x: Float64, y: Float64, paint: ?Paint): Unit {
+    public func drawText(text: String, x: Float64, y: Float64, paint: ?Paint, maxWidth!: ?Float64 = Option<Float64>.None): Unit {
         if (let Some(v) <- paint) {
-            drawTextInternal(this.context, text, x, y, v)
+            if (let Some(j) <- offScreenContext) {
+                drawTextInternal(j, text, x, y, v)
+            } else {
+                drawTextInternal(context, text, x, y, v)
+            }
+        }
+    }
+
+    private func drawTextInternal(context: OffscreenCanvasRenderingContext2D, text: String, x: Float64, y: Float64, paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        context.font(size: paint.getFontSize().px, family: "sans-serif")
+        if (paint.isStroke()) {
+            context.strokeText(text, x, y)
+        } else {
+            context.fillText(text, x, y)
         }
     }
 
     private func drawTextInternal(context: CanvasRenderingContext2D, text: String, x: Float64, y: Float64, paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.font(size: Length(paint.getFontSize(), unitType: LengthType.px), family: "sans-serif")
+        context.font(size: paint.getFontSize().px, family: "sans-serif")
         if (paint.isStroke()) {
             context.strokeText(text, x, y)
         } else {
@@ -366,8 +414,20 @@ public class CanvasImpl <: ICanvas {
 
     public func drawCircle(x: Float64, y: Float64, radius: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawCircleInternal(this.context, x, y, radius, v)
+            if (let Some(j) <- offScreenContext) {
+                drawCircleInternal(j, x, y, radius, v)
+            } else {
+                drawCircleInternal(context, x, y, radius, v)
+            }
         }
+    }
+
+    private func drawCircleInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, radius: Float64,
+        paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        context.arc(x, y, radius, 0.0, Float64.PI * 2.0)
+        invalidate(context, paint)
     }
 
     private func drawCircleInternal(context: CanvasRenderingContext2D, x: Float64, y: Float64, radius: Float64,
@@ -380,7 +440,11 @@ public class CanvasImpl <: ICanvas {
 
     public func drawOval(x: Float64, y: Float64, width: Float64, height: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawOvalInternal(this.context, x, y, width, height, v)
+            if (let Some(j) <- offScreenContext) {
+                drawOvalInternal(j, x, y, width, height, v)
+            } else {
+                drawOvalInternal(context, x, y, width, height, v)
+            }
         }
     }
 
@@ -397,10 +461,23 @@ public class CanvasImpl <: ICanvas {
         invalidate(context, paint)
     }
 
+    private func drawOvalInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, width: Float64,
+        height: Float64, paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        context.ellipse(x + (width / 2.0), y + (height / 2.0), (width / 2.0), (height / 2.0), 0.0, 0.0, Float64.PI * 2.0
+        )
+        invalidate(context, paint)
+    }
+
     public func drawArc(x: Float64, y: Float64, radius: Float64, startAngle: Float64, endAngle: Float64, paint: ?Paint,
         counterclockwise: Bool): Unit {
         if (let Some(v) <- paint) {
-            drawArcInternal(this.context, x, y, radius, startAngle, endAngle, v, counterclockwise)
+            if (let Some(j) <- offScreenContext) {
+                drawArcInternal(j, x, y, radius, startAngle, endAngle, v, counterclockwise)
+            } else {
+                drawArcInternal(context, x, y, radius, startAngle, endAngle, v, counterclockwise)
+            }
         }
     }
 
@@ -416,9 +493,36 @@ public class CanvasImpl <: ICanvas {
         invalidate(context, paint)
     }
 
+    public func drawArcInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, radius: Float64,
+        startAngle: Float64, endAngle: Float64, paint: Paint, counterclockwise: Bool): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        if (!paint.isStroke()) {
+            context.moveTo(x, y)
+        }
+        context.arc(x, y, radius, startAngle / 360.0 * Float64.PI * 2.0, endAngle / 360.0 * Float64.PI * 2.0,
+            anticlockwise: counterclockwise)
+        invalidate(context, paint)
+    }
+
     public func drawRect(x: Float64, y: Float64, width: Float64, height: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawRectInternal(this.context, x, y, width, height, v)
+            if (let Some(j) <- offScreenContext) {
+                drawRectInternal(j, x, y, width, height, v)
+            } else {
+                drawRectInternal(context, x, y, width, height, v)
+            }
+        }
+    }
+
+    public func drawRectInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, width: Float64,
+        height: Float64, paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        if (paint.isStroke()) {
+            context.strokeRect(x, y, width, height)
+        } else {
+            context.fillRect(x, y, width, height)
         }
     }
 
@@ -435,8 +539,27 @@ public class CanvasImpl <: ICanvas {
 
     public func drawRoundRect(x: Float64, y: Float64, width: Float64, height: Float64, radius: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawRoundRectInternal(this.context, x, y, width, height, radius, v)
+            if (let Some(j) <- offScreenContext) {
+                drawRoundRectInternal(j, x, y, width, height, radius, v)
+            } else {
+                drawRoundRectInternal(context, x, y, width, height, radius, v)
+            }
         }
+    }
+
+    private func drawRoundRectInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, width: Float64,
+        height: Float64, radius: Float64, paint: Paint): Unit {
+        updateOffScreenContextAttributes(context, paint)
+        context.beginPath()
+        context.arc(x + radius, y + radius, radius, Float64.PI, Float64.PI * 3.0 / 2.0)
+        context.lineTo(width - radius + x, y)
+        context.arc(width - radius + x, radius + y, radius, Float64.PI * 3.0 / 2.0, Float64.PI * 2.0)
+        context.lineTo(width + x, height + y - radius)
+        context.arc(width - radius + x, height - radius + y, radius, 0.0, Float64.PI * 1.0 / 2.0)
+        context.lineTo(radius + x, height + y)
+        context.arc(radius + x, height - radius + y, radius, Float64.PI * 1.0 / 2.0, Float64.PI)
+        context.closePath()
+        invalidate(context, paint)
     }
 
     private func drawRoundRectInternal(context: CanvasRenderingContext2D, x: Float64, y: Float64, width: Float64,
@@ -457,18 +580,40 @@ public class CanvasImpl <: ICanvas {
     public func drawImage(image: ImageBitmap, sx: Float64, sy: Float64, sWidth: Float64, sHeight: Float64, dx: Float64,
         dy: Float64, dWidth: Float64, dHeight: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawImageInternal(this.context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            if (let Some(j) <- offScreenContext) {
+                drawImageInternal(j, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            } else {
+                drawImageInternal(context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            }
         }
     }
 
     public func drawImage(image: PixelMap, sx: Float64, sy: Float64, sWidth: Float64, sHeight: Float64, dx: Float64,
         dy: Float64, dWidth: Float64, dHeight: Float64, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            drawImageInternal(this.context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            if (let Some(j) <- offScreenContext) {
+                drawImageInternal(j, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            } else {
+                drawImageInternal(context, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            }
         }
     }
 
+    public func drawImageInternal(context: OffscreenCanvasRenderingContext2D, image: ImageBitmap, sx: Float64, sy: Float64,
+        sWidth: Float64, sHeight: Float64, dx: Float64, dy: Float64, dWidth: Float64, dHeight: Float64): Unit {
+        context.beginPath()
+        context.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+        context.stroke()
+    }
+
     public func drawImageInternal(context: CanvasRenderingContext2D, image: ImageBitmap, sx: Float64, sy: Float64,
+        sWidth: Float64, sHeight: Float64, dx: Float64, dy: Float64, dWidth: Float64, dHeight: Float64): Unit {
+        context.beginPath()
+        context.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+        context.stroke()
+    }
+
+    public func drawImageInternal(context: OffscreenCanvasRenderingContext2D, image: PixelMap, sx: Float64, sy: Float64,
         sWidth: Float64, sHeight: Float64, dx: Float64, dy: Float64, dWidth: Float64, dHeight: Float64): Unit {
         context.beginPath()
         context.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
@@ -484,19 +629,32 @@ public class CanvasImpl <: ICanvas {
 
     public func drawPath(path: Path2D, paint: ?Paint): Unit {
         if (let Some(v) <- paint) {
-            if (v.isStroke()) {
-                this.context.lineWidth(v.getStrokeWidth())
-                this.context.strokeStyle(v.getColor())
-                this.context.stroke(path)
-            } else {
-                if (v.getGradient().isSome()) {
-                    this.context.fillStyle(v.getGradient()())
+            if (let Some(j) <- offScreenContext) {
+                 if (v.isStroke()) {
+                    j.lineWidth(v.getStrokeWidth())
+                    j.strokeStyle(v.getColor())
+                    j.stroke(path)
                 } else {
-                    this.context.fillStyle(v.getColor())
+                    if (v.getGradient().isSome()) {
+                        j.fillStyle(v.getGradient()())
+                    } else {
+                        j.fillStyle(v.getColor())
+                    }
+                    j.fill(path)
                 }
-                // TODO..
-                // this.context.fill(path)
-                this.context.stroke(path)
+            } else {
+                if (v.isStroke()) {
+                    this.context.lineWidth(v.getStrokeWidth())
+                    this.context.strokeStyle(v.getColor())
+                    this.context.stroke(path)
+                } else {
+                    if (v.getGradient().isSome()) {
+                        this.context.fillStyle(v.getGradient()())
+                    } else {
+                        this.context.fillStyle(v.getColor())
+                    }
+                    this.context.fill(path)
+                }
             }
         }
     }
@@ -509,12 +667,28 @@ public class CanvasImpl <: ICanvas {
         }
     }
 
+    private func invalidate(context: OffscreenCanvasRenderingContext2D, paint: Paint): Unit {
+        if (paint.isStroke()) {
+            context.stroke()
+        } else {
+            context.fill()
+        }
+    }
+
     public func measureText(text: String, paint: Paint): TextMetrics {
-        return this.context.measureText(text)
+        if (let Some(j) <- offScreenContext) {
+            return j.measureText(text)
+        } else {
+            return context.measureText(text)
+        }
     }
 
     public func rotate(x: Float64, y: Float64, angle: Float64, paint: Paint): Unit {
-        rotateInternal(this.context, x, y, angle)
+        if (let Some(j) <- offScreenContext) {
+            rotateInternal(j, x, y, angle)
+        } else {
+            rotateInternal(this.context, x, y, angle)
+        }
     }
 
     public func rotateInternal(context: CanvasRenderingContext2D, x: Float64, y: Float64, angle: Float64): Unit {
@@ -523,8 +697,18 @@ public class CanvasImpl <: ICanvas {
         context.translate(-x, -y)
     }
 
+    public func rotateInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, angle: Float64): Unit {
+        context.translate(x, y)
+        context.rotate(angle / 360.0 * Float64.PI * 2.0)
+        context.translate(-x, -y)
+    }
+
     public func scale(x: Float64, y: Float64, paint: Paint): Unit {
-        this.context.scale(x, y)
+        if (let Some(j) <- offScreenContext) {
+            j.scale(x, y)
+        } else {
+            context.scale(x, y)
+        }
     }
 
     public func getMatrix(): Matrix2D2 {
@@ -540,41 +724,64 @@ public class CanvasImpl <: ICanvas {
     }
 
     public func clipRect(left: Float64, top: Float64, right: Float64, bottom: Float64): Unit {
-        this.context.beginPath()
-        this.context.rect(left, top, right, bottom)
-        this.context.clip()
+        if (let Some(j) <- offScreenContext) {
+            j.beginPath()
+            j.rect(left, top, right, bottom)
+            j.clip()
+        } else {
+            context.beginPath()
+            context.rect(left, top, right, bottom)
+            context.clip()
+        }
     }
 
     public func clipPath(path: Path2D): Unit {
-        this.context.beginPath()
-        // TODO..
-        // this.context.clip(path)
-        this.context.stroke(path)
+        if (let Some(j) <- offScreenContext) {
+            j.beginPath()
+            j.clip(path)
+        } else {
+            context.beginPath()
+            context.clip(path)
+        }
     }
 
     public func drawColor(color: Color): Unit {
-        this.context.fillStyle(color)
+        if (let Some(j) <- offScreenContext) {
+            j.fillStyle(color)
+        } else {
+            context.fillStyle(color)
+        }
     }
 
     public func translate(x: Float64, y: Float64, paint: Paint): Unit {
-        this.context.translate(x, y)
+        if (let Some(j) <- offScreenContext) {
+            j.translate(x, y)
+        } else {
+            context.translate(x, y)
+        }
     }
 
     public func restore(paint!: Paint = Paint(Option<Paint>.None)): Unit {
-        this.context.restore()
+        if (let Some(j) <- offScreenContext) {
+            j.restore()
+        } else {
+            context.restore()
+        }
     }
 
     public func save(paint!: Paint = Paint(Option<Paint>.None)): Unit {
-        this.context.save()
+        if (let Some(j) <- offScreenContext) {
+            j.save()
+        } else {
+            context.save()
+        }
     }
 
-    public func clear(width: Float64, height: Float64): Unit {
-        //    this.context.clearRect(0.0, 0.0, this.context.width, this.context.height)
-        this.context.clearRect(0.0, 0.0, width, height)
+    public func clear(): Unit {
+        this.context.clearRect(0.0, 0.0, this.context.width(), this.context.height())
     }
 
-    public func getPixelMap(width: Float64, height: Float64): PixelMap {
-        //    return this.context.getPixelMap(0.0, 0.0, this.context.width, this.context.heiht)
-        return this.context.getPixelMap(0.0, 0.0, width, height)
+    public func getPixelMap(): PixelMap {
+        return this.context.getPixelMap(0.0, 0.0, this.context.width(), this.context.height())
     }
 }

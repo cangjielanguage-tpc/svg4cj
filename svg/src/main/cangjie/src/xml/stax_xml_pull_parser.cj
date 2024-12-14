@@ -9,8 +9,6 @@ package svg.xml
 public class StaxXmlPullParser <: XmlPullParser {
     let reader: XmlReader
 
-    private var xmlNode: ?XmlNode = None
-
     /**
      * 初始化对象。
      *
@@ -36,21 +34,25 @@ public class StaxXmlPullParser <: XmlPullParser {
     }
 
     public override func getNamespaceCount(): Int64 {
-        tagNss.size
+        (currentDepNss ?? {
+            =>
+            let arr = tagNss.kvIter() |> filter {kv: (String, ValueType) => kv[1].depth == depth} |>
+                map {kv: (String, ValueType) => (kv[0], kv[1].namespace)} |> collectArray
+            currentDepNss = arr
+            arr
+        }()).size
     }
 
     public override func getNamespacePrefix(pos: Int64): String {
-        let keys = tagNss.keySet().toArray()
-        if (pos < keys.size) {
-            keys[pos]
-        } else {
-            ""
-        }
+        getNamespaceCount()
+        let values = currentDepNss.getOrThrow()
+        values[pos][0]
     }
 
     public override func getNamespaceUri(pos: Int64): String {
-        let values = tagNss.values()
-        values[pos].namespace
+        getNamespaceCount()
+        let values = currentDepNss.getOrThrow()
+        values[pos][1]
     }
 
     public override func getNamespace(prefix: ?String): ?String {
@@ -191,6 +193,7 @@ public class StaxXmlPullParser <: XmlPullParser {
     var text: String = ""
     var depth: Int = 0
     var tagNss: MultiMap<String, ValueType> = MultiMap<String, ValueType>()
+    private var currentDepNss: ?Array<(NssPrefix, NssUri)> = None // 当前节点的nss信息 由getNamespaceCount()延迟加载
 
     public override func next(): XmlPullParserEvent {
         if (eventType == XmlPullParserEvent.END_ELEMENT) {
@@ -199,6 +202,7 @@ public class StaxXmlPullParser <: XmlPullParser {
         if (let Some(event) <- reader.peek()) {
             match (event) {
                 case ElementStart =>
+                    currentDepNss = None
                     attrs.clear()
                     text = ""
                     depth++
@@ -211,7 +215,7 @@ public class StaxXmlPullParser <: XmlPullParser {
                                 tagNss.put(prefix, ValueType(depth, uri))
                             case XmlEvent.Attribute =>
                                 let attr = reader.readAttribute()
-                                attrs.append(attr)
+                                attrs.add(attr)
                             case _ => break
                         }
                     }
@@ -265,10 +269,11 @@ public class StaxXmlPullParser <: XmlPullParser {
         }
         next()
         match (eventType) {
-            case XmlPullParserEvent.TEXT_CHARACTERS => if (next() != XmlPullParserEvent.END_ELEMENT) {
-                throw XmlPullParserException(
-                    "elementGetText() function expects text only elment but START_ELEMENT was encountered.")
-            }
+            case XmlPullParserEvent.TEXT_CHARACTERS =>
+                if (next() != XmlPullParserEvent.END_ELEMENT) {
+                    throw XmlPullParserException(
+                        "elementGetText() function expects text only elment but START_ELEMENT was encountered.")
+                }
             case XmlPullParserEvent.END_ELEMENT => return text
             case _ => throw XmlPullParserException("Unexpected event type ${eventType}")
         }
@@ -314,8 +319,8 @@ public class StaxXmlPullParserFactory <: XmlPullParserFactory {
 }
 
 class ValueType <: Equatable<ValueType> {
-    var depth: Int64
-    var namespace: String
+    public var depth: Int64
+    public var namespace: String
 
     init(depth: Int64, namespace: String) {
         this.depth = depth
@@ -331,8 +336,8 @@ class ValueType <: Equatable<ValueType> {
         }
         return false
     }
-
-    public operator override func !=(that: ValueType): Bool {
-        return !(this == that)
-    }
 }
+
+type NssPrefix = String
+
+type NssUri = String

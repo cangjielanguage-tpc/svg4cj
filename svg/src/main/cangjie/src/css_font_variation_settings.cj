@@ -30,14 +30,14 @@ public class CSSFontVariationSettings {
     }
 
     public func addSetting(key: String, value: Float64): Unit {
-        this.settings.put(key, value)
+        this.settings.add(key, value)
     }
 
     public func applySettings(variationSet: ?CSSFontVariationSettings): Unit {
         if (variationSet.isNone()) {
             return
         }
-        this.settings.putAll(variationSet().settings)
+        this.settings.add(all: variationSet().settings)
     }
 
     public func toString(): String {
@@ -71,7 +71,7 @@ public class CSSFontVariationSettings {
             if (entry == FontVariationEntry()) {
                 return CSSFontVariationSettings()
             }
-            result.settings.put(entry.name, entry.val)
+            result.settings.add(entry.name, entry.val)
             scan.skipCommaWhitespace()
         }
         return result

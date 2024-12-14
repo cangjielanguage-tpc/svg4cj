@@ -35,16 +35,16 @@ public class PreserveAspectRatio {
     }
 
     static init() {
-        aspectRatioKeywords.put("none", Alignment.none)
-        aspectRatioKeywords.put("xMinYMin", Alignment.xMinYMin)
-        aspectRatioKeywords.put("xMidYMin", Alignment.xMidYMin)
-        aspectRatioKeywords.put("xMaxYMin", Alignment.xMaxYMin)
-        aspectRatioKeywords.put("xMinYMid", Alignment.xMinYMid)
-        aspectRatioKeywords.put("xMidYMid", Alignment.xMidYMid)
-        aspectRatioKeywords.put("xMaxYMid", Alignment.xMaxYMid)
-        aspectRatioKeywords.put("xMinYMax", Alignment.xMinYMax)
-        aspectRatioKeywords.put("xMidYMax", Alignment.xMidYMax)
-        aspectRatioKeywords.put("xMaxYMax", Alignment.xMaxYMax)
+        aspectRatioKeywords.add("none", Alignment.none)
+        aspectRatioKeywords.add("xMinYMin", Alignment.xMinYMin)
+        aspectRatioKeywords.add("xMidYMin", Alignment.xMidYMin)
+        aspectRatioKeywords.add("xMaxYMin", Alignment.xMaxYMin)
+        aspectRatioKeywords.add("xMinYMid", Alignment.xMinYMid)
+        aspectRatioKeywords.add("xMidYMid", Alignment.xMidYMid)
+        aspectRatioKeywords.add("xMaxYMid", Alignment.xMaxYMid)
+        aspectRatioKeywords.add("xMinYMax", Alignment.xMinYMax)
+        aspectRatioKeywords.add("xMidYMax", Alignment.xMidYMax)
+        aspectRatioKeywords.add("xMaxYMax", Alignment.xMaxYMax)
     }
 
     static let UNSCALED: PreserveAspectRatio = PreserveAspectRatio()

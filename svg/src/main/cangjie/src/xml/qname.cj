@@ -97,10 +97,6 @@ public class QName <: ToString & Hashable & Equatable<QName> {
         refEq(this, qname) || (namespace == qname.namespace && local == qname.local && prefix == qname.prefix)
     }
 
-    public operator func !=(qname: QName): Bool {
-        !(this == qname)
-    }
-
     /**
      * 计算哈希值的方法，并使用了 @OverflowWrapping 属性修饰。
      * @return 计算后的哈希值。
