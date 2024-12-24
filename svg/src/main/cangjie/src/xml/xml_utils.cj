@@ -113,7 +113,7 @@ struct Status <: Equatable<Status> & ToString {
 }
 
 class BytesInputStream <: ToString {
-    protected let buffer = Array<Byte>(4096, item: 0)
+    protected let buffer = Array<Byte>(4096, repeat: 0)
     protected var window = Array<Byte>() // the slice of data buffer, for fast path
 
     public BytesInputStream(private let rawInput: InputStream) {}
@@ -354,7 +354,7 @@ func toAsciiLower(b: Byte): Byte {
  * 后进先出的栈。
  */
 class Stack<T> {
-    private var buff = Array<T>(16, item: unsafe { zeroValue<T>() })
+    private var buff = Array<T>(16, repeat: unsafe { zeroValue<T>() })
     private var idx = 0
 
     /**
@@ -401,7 +401,7 @@ class Stack<T> {
     public func push(v: T): Unit {
         if (isFull()) {
             let newSize = buff.size + (buff.size >> 1)
-            let newBuff = Array<T>(newSize, item: unsafe { zeroValue<T>() })
+            let newBuff = Array<T>(newSize, repeat: unsafe { zeroValue<T>() })
             buff.copyTo(newBuff, 0, 0, idx)
             buff = newBuff
         }
@@ -454,7 +454,7 @@ extend<T> ArrayList<T> <: ArrayListExt<T> {
     public func removeValue(v: T): Bool {
         for (i in 0..this.size) {
             if (EqualsUtil.equals(this[i], v)) {
-                this.remove(i)
+                this.remove(at: i)
                 return true
             }
         }

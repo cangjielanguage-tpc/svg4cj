@@ -31,7 +31,7 @@ public class SVGRenderer {
         this.stateStack = LinkedList<RendererState>()
         updateStyle(this.state, Style.getDefaultStyle())
         this.state.spacePreserve = false
-        this.stateStack.append(RendererState(this.state))
+        this.stateStack.addLast(RendererState(this.state))
         this.matrixStack = LinkedList<Matrix2D2>()
         this.parentStack = LinkedList<SvgContainer>()
     }
@@ -150,7 +150,7 @@ public class SVGRenderer {
                 }
                 var intervals: ArrayList<Float64> = ArrayList<Float64>(arrayLen)
                 for (i in 0..arrayLen) {
-                    intervals.insert(i, state.style.strokeDashArray[i % n].floatValue(this))
+                    intervals.add(state.style.strokeDashArray[i % n].floatValue(this), at: i)
                     intervalSum += intervals[i]
                 }
                 if (intervalSum == 0.0) {
@@ -303,9 +303,9 @@ public class SVGRenderer {
 
     private func setPaintColour(state: RendererState, isFill: Bool, paint: SvgPaint): Unit {
         var col: Color
-        if (let Some(paint) <- paint as Colour) {
+        if (let Some(paint) <- (paint as Colour)) {
             col = paint.colour
-        } else if (let Some(v) <- paint as CurrentColor) {
+        } else if (let Some(v) <- (paint as CurrentColor)) {
             col = state.style.color.colour
         } else {
             return
@@ -349,7 +349,7 @@ public class SVGRenderer {
                     if (!(v is View)) {
                         return
                     }
-                    if (let Some(view) <- v as View) {
+                    if (let Some(view) <- (v as View)) {
                         viewBox = view.viewBox
                         preserveAspectRatio = view.preserveAspectRatio
                     } else {
@@ -409,7 +409,7 @@ public class SVGRenderer {
     }
 
     private func checkXMLSpaceAttribute(obj: SvgObject): Unit {
-        if (let Some(v) <- obj as SvgElementBase) {
+        if (let Some(v) <- (obj as SvgElementBase)) {
             let bobj: SvgElementBase = v
             if (bobj.spacePreserve != false) {
                 this.state.spacePreserve = bobj.spacePreserve
@@ -424,14 +424,14 @@ public class SVGRenderer {
         } else {
             this.canvas.save()
         }
-        this.stateStack.append(this.state)
+        this.stateStack.addLast(this.state)
         this.state = RendererState(this.state)
     }
 
     private func statePop(): Unit {
         this.combinedPath = None
         this.canvas.restore()
-        this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+        this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
     }
 
     private func renderSvg4(obj: Svg, viewPort: Box, viewBox: Box, p: ?PreserveAspectRatio, context: ?AbilityContext): Unit {
@@ -519,7 +519,7 @@ public class SVGRenderer {
     private func calculateClipPath(obj: SvgElement, boundingBox: Box): ?Path2D {
         let ref: SvgObject = obj.document().resolveIRI(this.state.style.clipPath) ?? return None
         let clipPath: ClipPath = (ref as ClipPath)()
-        this.stateStack.append(this.state)
+        this.stateStack.addLast(this.state)
         this.state = findInheritFromAncestorState(clipPath)
         let userUnits: Bool = (clipPath.clipPathUnitsAreUser == false || clipPath.clipPathUnitsAreUser)
         let m: Matrix2D2 = Matrix2D2()
@@ -533,7 +533,7 @@ public class SVGRenderer {
         var cp: Path2D = Path2D()
         for (i in 0..clipPath.children.size) {
             let child = clipPath.children[i]
-            if (let Some(ele) <- child as SvgElement) {
+            if (let Some(ele) <- (child as SvgElement)) {
                 cp = objectToPath(ele, true)
             } else {
                 continue
@@ -546,7 +546,7 @@ public class SVGRenderer {
             }
         }
         this.canvas.getContext().transform(m.a, m.b, m.c, m.d, m.getE(), m.getF())
-        this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+        this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
         return cp
     }
 
@@ -617,7 +617,7 @@ public class SVGRenderer {
         if (this.state.style.opacity != 1.0) {
             this.canvas.getContext().globalAlpha(this.state.style.opacity)
         }
-        this.stateStack.append(this.state)
+        this.stateStack.addLast(this.state)
         this.state = RendererState(this.state)
         if (this.state.style.mask != "") {
             let ref: ?SvgObject = this.document().resolveIRI(this.state.style.mask)
@@ -638,9 +638,9 @@ public class SVGRenderer {
 
     private func viewportFill(): Unit {
         var col: Color
-        if (let Some(colo) <- this.state.style.viewportFill as Colour) {
+        if (let Some(colo) <- (this.state.style.viewportFill as Colour)) {
             col = colo.colour
-        } else if (let Some(current) <- this.state.style.viewportFill as CurrentColor) {
+        } else if (let Some(current) <- (this.state.style.viewportFill as CurrentColor)) {
             col = this.state.style.color.colour
         } else {
             return
@@ -664,13 +664,13 @@ public class SVGRenderer {
     }
 
     private func parentPush(obj: SvgContainer): Unit {
-        this.parentStack.append(obj)
-        this.matrixStack.append(this.canvas.getMatrix())
+        this.parentStack.addLast(obj)
+        this.matrixStack.addLast(this.canvas.getMatrix())
     }
 
     private func parentPop(): Unit {
-        this.parentStack.popLast()
-        this.matrixStack.popLast()
+        this.parentStack.removeLast()
+        this.matrixStack.removeLast()
     }
 
     private func render(obj: SvgObject, context: ?AbilityContext): Unit {
@@ -679,31 +679,31 @@ public class SVGRenderer {
         }
         statePush()
         checkXMLSpaceAttribute(obj)
-        if (let Some(svg) <- obj as Svg) {
+        if (let Some(svg) <- (obj as Svg)) {
             renderSvg(svg, Option<Box>.None, context)
-        } else if (let Some(use) <- obj as Use) {
+        } else if (let Some(use) <- (obj as Use)) {
             renderUse(use, context)
-        } else if (let Some(switch) <- obj as Switch) {
+        } else if (let Some(switch) <- (obj as Switch)) {
             renderSwitch(switch, context)
-        } else if (let Some(group) <- obj as Group) {
+        } else if (let Some(group) <- (obj as Group)) {
             renderGroup(group, context)
-        } else if (let Some(image) <- obj as Image2) {
+        } else if (let Some(image) <- (obj as Image2)) {
             renderImage(image, context)
-        } else if (let Some(path) <- obj as Path2) {
+        } else if (let Some(path) <- (obj as Path2)) {
             renderPath(path, context)
-        } else if (let Some(rect) <- obj as Rect2) {
+        } else if (let Some(rect) <- (obj as Rect2)) {
             renderRect(rect, context)
-        } else if (let Some(circle) <- obj as Circle2) {
+        } else if (let Some(circle) <- (obj as Circle2)) {
             renderCircle(circle, context)
-        } else if (let Some(ellipse) <- obj as Ellipse2) {
+        } else if (let Some(ellipse) <- (obj as Ellipse2)) {
             renderEllipse(ellipse, context)
-        } else if (let Some(line) <- obj as Line2) {
+        } else if (let Some(line) <- (obj as Line2)) {
             renderLine(line, context)
-        } else if (let Some(polygon) <- obj as Polygon2) {
+        } else if (let Some(polygon) <- (obj as Polygon2)) {
             renderPolygon(polygon, context)
-        } else if (let Some(polyLine) <- obj as PolyLine) {
+        } else if (let Some(polyLine) <- (obj as PolyLine)) {
             renderPolyLine(polyLine, context)
-        } else if (let Some(text) <- obj as Text2) {
+        } else if (let Some(text) <- (obj as Text2)) {
             renderText(text, context)
         }
         statePop()
@@ -714,7 +714,7 @@ public class SVGRenderer {
             this.canvas.getContext().globalCompositeOperation(CompositeOperation.DestinationIn)
             let ref: ?SvgObject = this.document().resolveIRI(this.state.style.mask)
             if (let Some(v) <- ref) {
-                if (let Some(ref) <- v as Mask) {
+                if (let Some(ref) <- (v as Mask)) {
                     renderMask(ref, obj, context, originalObjBBox: originalObjBBox)
                 }
             }
@@ -792,14 +792,13 @@ public class SVGRenderer {
         updateStyle(newState, Style.getDefaultStyle())
         let ancestors: ArrayList<SvgElementBase> = ArrayList<SvgElementBase>()
         while (true) {
-            if (let Some(ele) <- obj as SvgElementBase) {
-                ancestors.insert(0, ele)
+            if (obj is SvgElementBase) {
+                ancestors.add((obj as SvgElementBase)(), at: 0)
             }
-            if (let Some(v) <- obj.parent as SvgObject) {
-                obj = v
-            } else {
+            if (obj.parent.isNone()) {
                 break
             }
+            obj = (obj.parent.getOrThrow() as SvgObject)()
         }
         for (i in 0..ancestors.size) {
             let ancestor = ancestors[i]
@@ -848,11 +847,15 @@ public class SVGRenderer {
     }
 
     private func checkForGradientsAndPatterns(obj: SvgElement): Unit {
-        if (let Some(fill) <- this.state.style.fill as PaintReference) {
-            decodePaintReference(true, obj.boundingBox, fill)
+        if (let Some(v) <- this.state.style.fill) {
+            if (v is PaintReference) {
+                decodePaintReference(true, obj.boundingBox, (v as PaintReference).getOrThrow())
+            }
         }
-        if (let Some(stroke) <- this.state.style.stroke as PaintReference) {
-            decodePaintReference(false, obj.boundingBox, stroke)
+        if (let Some(j) <- this.state.style.stroke) {
+            if (j is PaintReference) {
+                decodePaintReference(true, obj.boundingBox, (j as PaintReference).getOrThrow())
+            }
         }
     }
 
@@ -870,11 +873,11 @@ public class SVGRenderer {
             }
             return
         }
-        if (let Some(svgLinearGradient) <- ref() as SvgLinearGradient) {
+        if (let Some(svgLinearGradient) <- (ref() as SvgLinearGradient)) {
             makeLinearGradient(isFill, boundingBox, svgLinearGradient)
-        } else if (let Some(svgRadialGradient) <- ref() as SvgRadialGradient) {
+        } else if (let Some(svgRadialGradient) <- (ref() as SvgRadialGradient)) {
             makeRadialGradient(isFill, boundingBox, svgRadialGradient)
-        } else if (let Some(solidColor) <- ref() as SolidColor) {
+        } else if (let Some(solidColor) <- (ref() as SolidColor)) {
             setSolidColor(isFill, solidColor)
         }
     }
@@ -941,19 +944,19 @@ public class SVGRenderer {
                 0
             }
             if (i == 0 || offset >= lastOffset) {
-                positions[i] = offset
+                positions.add(offset, at: i)
                 lastOffset = offset
             } else {
-                positions[i] = lastOffset
+                positions.add(lastOffset, at: i)
             }
             statePush()
             updateStyleForElement(this.state, stop)
-            var col: Colour = if (let Some(stopColor) <- this.state.style.stopColor as Colour) {
+            var col: Colour = if (let Some(stopColor) <- (this.state.style.stopColor as Colour)) {
                 stopColor
             } else {
                 Colour.BLACK
             }
-            colours.insert(i, col.colour)
+            colours.add(col.colour, at: i)
             i++
             statePop()
         }
@@ -1131,10 +1134,10 @@ public class SVGRenderer {
                 0
             }
             if (i == 0 || offset >= lastOffset) {
-                positions[i] = offset
+                positions.add(offset, at: i)
                 lastOffset = offset
             } else {
-                positions[i] = lastOffset
+                positions.add(lastOffset, at: i)
             }
             statePush()
             updateStyleForElement(this.state, stop)
@@ -1142,7 +1145,7 @@ public class SVGRenderer {
             if (col.isNone()) {
                 col = Colour.BLACK
             }
-            colours.insert(i, col().colour)
+            colours.add(col().colour, at: i)
             i++
             statePop()
         }
@@ -1258,13 +1261,16 @@ public class SVGRenderer {
     }
 
     private func doFilledPath(obj: SvgElement, path: Path2D, context: ?AbilityContext): Unit {
-        if (let Some(fill) <- this.state.style.fill as PaintReference) {
-            let ref: ?SvgObject = this.document().resolveIRI(fill.href)
-            if (let Some(v) <- ref) {
-                if (let Some(ref) <- v as Pattern) {
-                    let pattern: Pattern = ref
-                    fillWithPattern(obj, path, pattern, context)
-                    return
+        if (let Some(v) <- this.state.style.fill) {
+            if (v is PaintReference) {
+                let fill = (v as PaintReference)()
+                let ref: ?SvgObject = this.document().resolveIRI(fill.href)
+                if (let Some(j) <- ref) {
+                    if (let Some(ref) <- (j as Pattern)) {
+                        let pattern: Pattern = ref
+                        fillWithPattern(obj, path, pattern, context)
+                        return
+                    }
                 }
             }
         }
@@ -1558,8 +1564,8 @@ public class SVGRenderer {
             obj.y2.floatValueY(this)
         }
         let markers: ArrayList<MarkerVector> = ArrayList<MarkerVector>()
-        markers.append(MarkerVector(_x1, _y1, (_x2 - _x1), (_y2 - _y1)))
-        markers.append(MarkerVector(_x2, _y2, (_x2 - _x1), (_y2 - _y1)))
+        markers.add(MarkerVector(_x1, _y1, (_x2 - _x1), (_y2 - _y1)))
+        markers.add(MarkerVector(_x2, _y2, (_x2 - _x1), (_y2 - _y1)))
         return markers
     }
 
@@ -1648,7 +1654,7 @@ public class SVGRenderer {
             x = obj.points[i]
             y = obj.points[i + 1]
             lastPos.add(x, y)
-            markers.append(lastPos)
+            markers.add(lastPos)
             lastPos = MarkerVector(x, y, x - lastPos.x, y - lastPos.y)
         }
         if (obj is Polygon2) {
@@ -1656,15 +1662,15 @@ public class SVGRenderer {
                 x = obj.points[0]
                 y = obj.points[1]
                 lastPos.add(x, y)
-                markers.append(lastPos)
+                markers.add(lastPos)
                 let newPos: MarkerVector = MarkerVector(x, y, x - lastPos.x, y - lastPos.y)
                 newPos.add(markers[0].x, markers[0].y)
-                markers.append(newPos)
-                markers.remove(0)
-                markers.insert(0, newPos)
+                markers.add(newPos)
+                markers.remove(at: 0)
+                markers.add(newPos, at: 0)
             }
         } else {
-            markers.append(lastPos)
+            markers.add(lastPos)
         }
         return markers
     }
@@ -1755,7 +1761,7 @@ public class SVGRenderer {
         if (obj is TextPath) {
             statePush()
             statePop()
-        } else if (let Some(span) <- obj as TSpan) {
+        } else if (let Some(span) <- (obj as TSpan)) {
             statePush()
             let tspan = span
             updateStyleForElement(this.state, tspan)
@@ -1775,7 +1781,7 @@ public class SVGRenderer {
                 }
             }
             statePop()
-        } else if (let Some(ref) <- obj as TRef) {
+        } else if (let Some(ref) <- (obj as TRef)) {
             statePush()
             let tref = ref
             updateStyleForElement(this.state, tref)
@@ -1783,7 +1789,7 @@ public class SVGRenderer {
                 checkForGradientsAndPatterns((tref.getTextRoot() as SvgElement)())
                 let ref: ?SvgObject = obj.document().resolveIRI(tref.href)
                 if (let Some(v) <- ref) {
-                    if (let Some(ref) <- v as TextContainer) {
+                    if (let Some(ref) <- (v as TextContainer)) {
                         let str: String = ""
                         extractRawText(ref, str)
                         if (str.size > 0) {
@@ -1793,7 +1799,7 @@ public class SVGRenderer {
                 } else {}
             }
             statePop()
-        } else if (let Some(t) <- obj as Text2) {
+        } else if (let Some(t) <- (obj as Text2)) {
             statePush()
             updateStyleForElement(this.state, t)
             textprocessor.processText(textXMLSpaceTransform(t.text, true, true), this.state, this.canvas)
@@ -1806,9 +1812,9 @@ public class SVGRenderer {
         var isFirstChild: Bool = true
         for (i in 0..parent.children.size) {
             let child: SvgObject = parent.children[i]
-            if (let Some(container) <- child as TextContainer) {
+            if (let Some(container) <- (child as TextContainer)) {
                 extractRawText(container, str)
-            } else if (let Some(sequence) <- child as TextSequence) {
+            } else if (let Some(sequence) <- (child as TextSequence)) {
                 str += (textXMLSpaceTransform(sequence.text, isFirstChild, i + 1 != parent.children.size))
             }
             isFirstChild = false
@@ -1935,20 +1941,20 @@ public class SVGRenderer {
             var angle = angleStart + Float64(i) * angleIncrement
             var dx = cos(angle)
             var dy = sin(angle)
-            coords.insert(pos, dx - controlLength * dy)
+            coords.add(dx - controlLength * dy, at: pos)
             pos++
-            coords.insert(pos, dy + controlLength * dx)
+            coords.add(dy + controlLength * dx, at: pos)
             pos++
             angle += angleIncrement
             dx = cos(angle)
             dy = sin(angle)
-            coords.insert(pos, dx + controlLength * dy)
+            coords.add(dx + controlLength * dy, at: pos)
             pos++
-            coords.insert(pos, dy - controlLength * dx)
+            coords.add(dy - controlLength * dx, at: pos)
             pos++
-            coords.insert(pos, dx)
+            coords.add(dx, at: pos)
             pos++
-            coords.insert(pos, dy)
+            coords.add(dy, at: pos)
             pos++
         }
         return coords
@@ -2082,7 +2088,7 @@ public class SVGRenderer {
                 obj.height.floatValue(this))
         } else {
             viewportFill()
-            let array: Array<Byte> = fromBase64String(pic) ?? Array<Byte>(512, item: 0)
+            let array: Array<Byte> = fromBase64String(pic) ?? Array<Byte>(512, repeat: 0)
             let pixelMap: PixelMap = createImageSource(String.fromUtf8(array)).createPixelMap()
             if (!obj.x.isZero()) {
                 this.canvas.getContext().drawImage(pixelMap, obj.x.floatValueX(this), obj.y.floatValueY(this),
@@ -2149,7 +2155,7 @@ public class SVGRenderer {
 
     private func renderSwitchChild(obj: Switch, context: ?AbilityContext): Unit {
         for (child in obj.getChildren()) {
-            if (let Some(conditional) <- child as SvgConditional) {
+            if (let Some(conditional) <- (child as SvgConditional)) {
                 // @ts-ignore
                 let condObj: SvgConditional = conditional
                 if (condObj.getRequiredExtensions() != "") {
@@ -2188,13 +2194,13 @@ public class SVGRenderer {
         checkForClipPath(obj)
         let compositing: Bool = pushLayer()
         parentPush(obj)
-        if (let Some(svg) <- ref as Svg) {
+        if (let Some(svg) <- (ref as Svg)) {
             let svgElem = svg
             let viewPort: Box = makeViewPort(SVGLength(), SVGLength(), obj.width, obj.height)
             statePush()
             renderSvg(svgElem, Option<Box>.None, context, viewPort: viewPort)
             statePop()
-        } else if (let Some(symbol) <- ref as Symbol) {
+        } else if (let Some(symbol) <- (ref as Symbol)) {
             let _w: SVGLength = if (!obj.width.isZero()) {
                 obj.width
             } else {
@@ -2307,44 +2313,44 @@ public class SVGRenderer {
     }
 
     private func objectToPath(obj: SvgElement, allowUse: Bool): Path2D {
-        this.stateStack.append(this.state)
+        this.stateStack.addLast(this.state)
         this.state = RendererState(this.state)
         updateStyleForElement(this.state, obj)
         if (!display() || !visible()) {
-            this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+            this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
             return Path2D()
         }
         var path: Path2D = Path2D()
-        if (let Some(use) <- obj as Use) {
+        if (let Some(use) <- (obj as Use)) {
             if (!allowUse) {
             }
             let useElement: Use = use
             let ref: ?SvgObject = obj.document().resolveIRI(useElement.href)
             if (ref.isNone()) {
-                this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+                this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
                 return Path2D()
             }
             if (!(ref() is SvgElement)) {
-                this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+                this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
                 return Path2D()
             }
             path = objectToPath((ref() as SvgElement)(), false)
-        } else if (let Some(path2) <- obj as Path2) {
+        } else if (let Some(path2) <- (obj as Path2)) {
             path = Path2D(path2.d().d)
-        } else if (let Some(rect2) <- obj as Rect2) {
+        } else if (let Some(rect2) <- (obj as Rect2)) {
             path = makePathAndBoundingBoxRect(rect2)
-        } else if (let Some(circle2) <- obj as Circle2) {
+        } else if (let Some(circle2) <- (obj as Circle2)) {
             path = makePathAndBoundingBoxCircle(circle2)
-        } else if (let Some(ellipse2) <- obj as Ellipse2) {
+        } else if (let Some(ellipse2) <- (obj as Ellipse2)) {
             path = makePathAndBoundingBoxEllipse(ellipse2)
-        } else if (let Some(line) <- obj as PolyLine) {
+        } else if (let Some(line) <- (obj as PolyLine)) {
             path = makePathAndBoundingBoxPolyLine(line)
-        } else if (let Some(t) <- obj as Text2) {
+        } else if (let Some(t) <- (obj as Text2)) {
             path = makePathAndBoundingBoxText(t)
         } else {
             return Path2D()
         }
-        this.state = this.stateStack.popLast() ?? RendererState(Option<RendererState>.None)
+        this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
         return path
     }
 
@@ -2654,8 +2660,8 @@ public class SVGRenderer {
 
 public class RendererState {
     var style: Style
-    var hasFill: Bool = false
-    var hasStroke: Bool = true
+    var hasFill: Bool = true
+    var hasStroke: Bool = false
     var viewPort: Box = Box(0.0, 0.0, 0.0, 0.0)
     var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
     var fillPaint: Paint
@@ -2712,7 +2718,7 @@ class PlainTextDrawer <: TextProcessor {
 
     public func processText(text: String, state: RendererState, canvas: CanvasImpl): Unit {
         if (!textAnchor.isEmpty()) {
-            let textWidth: Float64 = canvas.getContext().measureText(text).width / pxTovp
+            let textWidth: Float64 = canvas.getContext().measureText(text).width
             if (textAnchor == "middle") {
                 x -= (textWidth / 2.0)
             } else if (textAnchor == "end") {
@@ -2735,7 +2741,7 @@ class PlainTextDrawer <: TextProcessor {
                 canvas.drawText(text, opt, y + dy, state.strokePaint)
             }
         }
-        x += canvas.getContext().measureText(text).width / pxTovp
+        x += canvas.getContext().measureText(text).width
     }
 
     private func visible(state: RendererState): Bool {
@@ -2816,12 +2822,12 @@ class MarkerPositionCalculator <: PathInterface {
             pathDef.enumeratePath(this)
             if (this.closepathReAdjustPending) {
                 this.lastPos.addMarkerVector(this.markers[this.subpathStartIndex])
-                this.markers.remove(this.subpathStartIndex)
-                this.markers.insert(this.subpathStartIndex, lastPos)
+                this.markers.remove(at: this.subpathStartIndex)
+                this.markers.add(lastPos, at: this.subpathStartIndex)
                 this.closepathReAdjustPending = false
             }
             if (this.lastPos != MarkerVector()) {
-                this.markers.append(this.lastPos)
+                this.markers.add(this.lastPos)
             }
         } else {
             return
@@ -2835,12 +2841,12 @@ class MarkerPositionCalculator <: PathInterface {
     public func moveTo(x: Float64, y: Float64): Unit {
         if (this.closepathReAdjustPending) {
             this.lastPos.addMarkerVector(this.markers[this.subpathStartIndex])
-            this.markers.remove(this.subpathStartIndex)
-            this.markers.insert(this.subpathStartIndex, this.lastPos)
+            this.markers.remove(at: this.subpathStartIndex)
+            this.markers.add(this.lastPos, at: this.subpathStartIndex)
             this.closepathReAdjustPending = false
         }
         if (this.lastPos != MarkerVector()) {
-            this.markers.append(this.lastPos)
+            this.markers.add(this.lastPos)
         }
         this.startX = x
         this.startY = y
@@ -2850,7 +2856,7 @@ class MarkerPositionCalculator <: PathInterface {
 
     public func lineTo(x: Float64, y: Float64): Unit {
         this.lastPos.add(x, y)
-        this.markers.append(this.lastPos)
+        this.markers.add(this.lastPos)
         this.lastPos = MarkerVector(x, y, x - this.lastPos.x, y - this.lastPos.y)
         this.closepathReAdjustPending = false
     }
@@ -2858,7 +2864,7 @@ class MarkerPositionCalculator <: PathInterface {
     public func cubicTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64, x3: Float64, y3: Float64): Unit {
         if (this.normalCubic || this.startArc) {
             this.lastPos.add(x1, y1)
-            this.markers.append(this.lastPos)
+            this.markers.add(this.lastPos)
             this.startArc = false
         }
         this.lastPos = MarkerVector(x3, y3, x3 - x2, y3 - y2)
@@ -2867,7 +2873,7 @@ class MarkerPositionCalculator <: PathInterface {
 
     public func quadTo(x1: Float64, y1: Float64, x2: Float64, y2: Float64): Unit {
         this.lastPos.add(x1, y1)
-        this.markers.append(this.lastPos)
+        this.markers.add(this.lastPos)
         this.lastPos = MarkerVector(x2, y2, x2 - x1, y2 - y1)
         this.closepathReAdjustPending = false
     }
@@ -2882,7 +2888,7 @@ class MarkerPositionCalculator <: PathInterface {
     }
 
     public func close(): Unit {
-        this.markers.append(this.lastPos)
+        this.markers.add(this.lastPos)
         lineTo(this.startX, this.startY)
         this.closepathReAdjustPending = true
     }

@@ -8,7 +8,7 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class BugfixFeColorMatrix {
+class RenderFeColorMatrix {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false

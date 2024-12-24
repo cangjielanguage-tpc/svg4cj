@@ -15,26 +15,20 @@ class getSVGPixelMap {
     @State
     var model: SVGImageViewModel = SVGImageViewModel()
 
-    @State
-    var model2: SVGImageViewModel = SVGImageViewModel()
+    func getData(): PixelMap {
+        let resourceManager = ResourceManager.getResourceManager(getStageContext(globalAbilityContext.getOrThrow()))
+        let value: Array<UInt8> = resourceManager.getRawFileContent("circle.svg")
+        let pixelmap = model.getSVGPixelMap(value, globalAbilityContext.getOrThrow())
+        pixels = pixelmap
+        return pixels.getOrThrow()
+    }
 
     func build() {
         Column() {
-            Button("点击").onClick(
-                {
-                    =>
-                    let resourceManager = ResourceManager.getResourceManager(getStageContext(globalAbilityContext.getOrThrow()))
-                    let value: Array<UInt8> = resourceManager.getRawFileContent("cock.svg")
-                    let pixelmap = model.getSVGPixelMap(value, globalAbilityContext.getOrThrow())
-                    this.pixels = pixelmap
-                }
-            )
-            if (let Some(v) <- pixels) {
-                Image(v)
-                .width(400)
-                .height(400)
-                .border(width: 1.vp, color: Color(0x000000))
-            }
+            Image(getData())
+            .width(400)
+            .height(400)
+            .border(width: 1.vp, color: Color(0x000000))
         }.height(100.percent)
     }
 }

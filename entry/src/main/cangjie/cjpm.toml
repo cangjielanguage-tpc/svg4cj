@@ -14,14 +14,11 @@
       [target.x86_64-unknown-windows-gnu.bin-dependencies.package-option]
 
 [dependencies]
-  [dependencies.cj_res_entry]
-    path = "./cj_res"
-    version = "1.0.0"
   [dependencies.svg]
     path = "../../../../svg/src/main/cangjie"
 
 [package]
-  cjc-version = "0.53.8"
+  cjc-version = "0.58.3"
   compile-option = ""
   description = "CangjieUI Application"
   link-option = ""

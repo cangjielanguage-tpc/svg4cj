@@ -275,7 +275,7 @@ public class Style {
                         if (style.fontStyle.isSome()) {
                             style.specifiedFlags |= SPECIFIED_FONT_STYLE
                         }
-                    case "text_decoration" =>
+                    case "textdecoration" =>
                         style.textDecoration = parseTextDecoration(val)
                         if (style.textDecoration != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_DECORATION
@@ -375,7 +375,7 @@ public class Style {
                         style.solidOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_SOLID_OPACITY
 
-                    case "viewport_fill" =>
+                    case "viewport-fill" =>
                         if (val == SVGParserImpl.CURRENTCOLOR) {
                             style.viewportFill = CurrentColor.getInstance()
                         } else {
@@ -386,17 +386,17 @@ public class Style {
                         }
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL
 
-                    case "viewport_fill_opacity" =>
+                    case "viewport-fill_opacity" =>
                         style.viewportFillOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL_OPACITY
 
-                    case "vector_effect" =>
+                    case "vector-effect" =>
                         style.vectorEffect = parseVectorEffect(val)
                         if (style.vectorEffect != "") {
                             style.specifiedFlags |= SPECIFIED_VECTOR_EFFECT
                         }
 
-                    case "image_rendering" =>
+                    case "image-rendering" =>
                         style.imageRendering = parseRenderQuality(val)
                         if (style.imageRendering != "") {
                             style.specifiedFlags |= SPECIFIED_IMAGE_RENDERING
@@ -691,7 +691,7 @@ public class Style {
         }
         var sum: Float64 = dashValue.getFloatValue()
         let dashes: ArrayList<SVGLength> = ArrayList<SVGLength>()
-        dashes.append(dashValue)
+        dashes.add(dashValue)
         while (!scan.empty()) {
             scan.skipCommaWhitespace()
             dash = scan.nextLength()
@@ -703,7 +703,7 @@ public class Style {
             if (dashValue.isNegative()) {
                 return EMPTY_ARRAYLIST
             }
-            dashes.append(dashValue)
+            dashes.add(dashValue)
             sum += dashValue.getFloatValue()
         }
         // Spec (section 11.4) says if the sum of dash lengths is zero, it should
@@ -800,7 +800,7 @@ class CSSBlendMode {
     init() {
         for ((k, v) in cache) {
             if (v != CSSBlendMode.UNSUPPORTED) {
-                this.cache.put(k.replace("_", "-"), v)
+                this.cache.add(k.replace("_", "-"), v)
             }
         }
     }
@@ -899,15 +899,15 @@ class FontSizeKeywords {
     private let fontSizeKeywords: HashMap<String, SVGLength> = HashMap<String, SVGLength>()
 
     init() {
-        this.fontSizeKeywords.put("xx-small", SVGLength(0.694, u: Units.pt))
-        this.fontSizeKeywords.put("x-small", SVGLength(0.833, u: Units.pt))
-        this.fontSizeKeywords.put("small", SVGLength(10.0, u: Units.pt))
-        this.fontSizeKeywords.put("medium", SVGLength(12.0, u: Units.pt))
-        this.fontSizeKeywords.put("large", SVGLength(14.4, u: Units.pt))
-        this.fontSizeKeywords.put("x-large", SVGLength(17.3, u: Units.pt))
-        this.fontSizeKeywords.put("xx-large", SVGLength(20.7, u: Units.pt))
-        this.fontSizeKeywords.put("smaller", SVGLength(83.33, u: Units.percent))
-        this.fontSizeKeywords.put("larger", SVGLength(120.0, u: Units.percent))
+        this.fontSizeKeywords.add("xx-small", SVGLength(0.694, u: Units.pt))
+        this.fontSizeKeywords.add("x-small", SVGLength(0.833, u: Units.pt))
+        this.fontSizeKeywords.add("small", SVGLength(10.0, u: Units.pt))
+        this.fontSizeKeywords.add("medium", SVGLength(12.0, u: Units.pt))
+        this.fontSizeKeywords.add("large", SVGLength(14.4, u: Units.pt))
+        this.fontSizeKeywords.add("x-large", SVGLength(17.3, u: Units.pt))
+        this.fontSizeKeywords.add("xx-large", SVGLength(20.7, u: Units.pt))
+        this.fontSizeKeywords.add("smaller", SVGLength(83.33, u: Units.percent))
+        this.fontSizeKeywords.add("larger", SVGLength(120.0, u: Units.percent))
     }
 
     func get(fontSize: String): ?SVGLength {
@@ -919,10 +919,10 @@ class FontWeightKeywords {
     private let fontWeightKeywords: HashMap<String, Float64> = HashMap<String, Float64>()
 
     init() {
-        this.fontWeightKeywords.put("normal", Style.FONT_WEIGHT_NORMAL)
-        this.fontWeightKeywords.put("bold", Style.FONT_WEIGHT_BOLD)
-        this.fontWeightKeywords.put("bolder", Style.FONT_WEIGHT_BOLDER)
-        this.fontWeightKeywords.put("lighter", Style.FONT_WEIGHT_LIGHTER)
+        this.fontWeightKeywords.add("normal", Style.FONT_WEIGHT_NORMAL)
+        this.fontWeightKeywords.add("bold", Style.FONT_WEIGHT_BOLD)
+        this.fontWeightKeywords.add("bolder", Style.FONT_WEIGHT_BOLDER)
+        this.fontWeightKeywords.add("lighter", Style.FONT_WEIGHT_LIGHTER)
     }
 
     func getValue(fontWeight: String): ?Float64 {
@@ -938,15 +938,15 @@ class FontStretchKeywords {
     private let fontStretchKeywords: HashMap<String, Float64> = HashMap<String, Float64>()
 
     init() {
-        this.fontStretchKeywords.put("ultra-condensed", 50.0)
-        this.fontStretchKeywords.put("extra-condensed", 62.5)
-        this.fontStretchKeywords.put("condensed", 75.0)
-        this.fontStretchKeywords.put("semi-condensed", 87.5)
-        this.fontStretchKeywords.put("normal", Style.FONT_STRETCH_NORMAL)
-        this.fontStretchKeywords.put("semi-expanded", 112.5)
-        this.fontStretchKeywords.put("expanded", 125.0)
-        this.fontStretchKeywords.put("extra-expanded", 150.0)
-        this.fontStretchKeywords.put("ultra-expanded", 200.0)
+        this.fontStretchKeywords.add("ultra-condensed", 50.0)
+        this.fontStretchKeywords.add("extra-condensed", 62.5)
+        this.fontStretchKeywords.add("condensed", 75.0)
+        this.fontStretchKeywords.add("semi-condensed", 87.5)
+        this.fontStretchKeywords.add("normal", Style.FONT_STRETCH_NORMAL)
+        this.fontStretchKeywords.add("semi-expanded", 112.5)
+        this.fontStretchKeywords.add("expanded", 125.0)
+        this.fontStretchKeywords.add("extra-expanded", 150.0)
+        this.fontStretchKeywords.add("ultra-expanded", 200.0)
     }
 
     func getValue(fontStretch: String): ?Float64 {

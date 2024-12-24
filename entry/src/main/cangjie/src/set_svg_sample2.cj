@@ -5,7 +5,7 @@
 package ohos_app_cangjie_entry
 
 import ohos.state_macro_manage.*
-internal import ohos.resource_manager.Resource as OhosResource
+internal import ohos.resource_manager.AppResource as OhosResource
 import ohos.concurrency.*
 
 @Entry

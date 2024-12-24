@@ -37,7 +37,7 @@ public class SVGParserImpl <: SVGParser {
             "fill_").replace("stop-", "stop_").replace("clip-", "clip_").replace("marker-", "marker_").replace("xml:",
             "xml_")
         startDocument()
-        let buf = ByteArrayStream()
+        let buf = ByteBuffer()
         buf.write(str.toArray())
         let parser: StaxXmlPullParser = StaxXmlPullParser(buf)
         var textIng: Bool = false
@@ -176,7 +176,7 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     let m: Matrix2D2 = Matrix2D2()
-                    m.setValues(a: a, b: c, c: e, d: b, tx: d / pxTovp, ty: f / pxTovp)
+                    m.setValues(a: a, b: c, c: e, d: b, tx: d, ty: f)
                     matrix.appendMatrix(m)
                 case "translate" =>
                     scan.skipWhitespace()
@@ -187,9 +187,9 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     if (ty.isNaN()) {
-                        matrix.translate(tx / pxTovp, y: 0.0)
+                        matrix.translate(tx, y: 0.0)
                     } else {
-                        matrix.translate(tx / pxTovp, y: ty / pxTovp)
+                        matrix.translate(tx, y: ty)
                     }
                 case "scale" =>
                     scan.skipWhitespace()
@@ -403,7 +403,7 @@ public class SVGParserImpl <: SVGParser {
             }
         }
         if (!isViewBox) {
-            if (let Some(s) <- obj as Svg) {
+            if (let Some(s) <- (obj as Svg)) {
                 let svg: Svg = s
                 if (svg.width.uni == "" || svg.width.uni == Units.percent) {
                     throw SVGParseException("Invalid width definition - must not percent when no viewbox")
@@ -530,9 +530,9 @@ public class SVGParserImpl <: SVGParser {
         while (!scan.empty()) {
             let feature: String = scan.nextToken()
             if (feature.startsWith(SVGParserImpl.FEATURE_STRING_PREFIX)) {
-                result.put(feature[SVGParserImpl.FEATURE_STRING_PREFIX.size..])
+                result.add(feature[SVGParserImpl.FEATURE_STRING_PREFIX.size..])
             } else {
-                result.put("UNSUPPORTED")
+                result.add("UNSUPPORTED")
             }
             scan.skipWhitespace()
         }
@@ -549,7 +549,7 @@ public class SVGParserImpl <: SVGParser {
                 language = language[..v]
             }
             //            language = content TODO..
-            result.put(language)
+            result.add(language)
             scan.skipWhitespace()
         }
         return result
@@ -560,7 +560,7 @@ public class SVGParserImpl <: SVGParser {
         var result: HashSet<String> = HashSet<String>()
         while (!scan.empty()) {
             let mimetype: String = scan.nextToken()
-            result.put(mimetype)
+            result.add(mimetype)
             scan.skipWhitespace()
         }
         return result
@@ -570,7 +570,7 @@ public class SVGParserImpl <: SVGParser {
         var fonts: ArrayList<String> = ArrayList<String>()
         let scan: TextScanner = TextScanner(content)
         while (true) {
-            var item: String = scan.nextQuotedString()
+            var item:  String = scan.nextQuotedString()
             if (item == "") {
                 item = scan.nextTokenWithWhitespace(',')
             }
@@ -580,7 +580,7 @@ public class SVGParserImpl <: SVGParser {
             if (fonts.isEmpty()) {
                 fonts = ArrayList<String>()
             }
-            fonts.append(item)
+            fonts.add(item)
             scan.skipCommaWhitespace()
             if (scan.empty()) {
                 break
@@ -679,12 +679,12 @@ public class SVGParserImpl <: SVGParser {
                 case "width" =>
                     obj.width = parseLength(val)
                     if (obj.width.isNegative()) {
-                        throw SVGParseException("Invalid <use> element. width cannot be negative")
+                        throw SVGParseException("Invalid <Image> element. width cannot be negative")
                     }
                 case "height" =>
                     obj.height = parseLength(val)
                     if (obj.height.isNegative()) {
-                        throw SVGParseException("Invalid <use> element. height cannot be negative")
+                        throw SVGParseException("Invalid <Image> element. height cannot be negative")
                     }
                 case "href" => obj.href = val
                 case "preserveAspectRatio" => SVGParserImpl.parsePreserveAspectRatio(obj, val)
@@ -1218,16 +1218,15 @@ public class SVGParserImpl <: SVGParser {
                             )
                         }
                         scan.skipCommaWhitespace()
-                        points.append(x)
-                        points.append(y)
+                        points.add(x)
+                        points.add(y)
                     }
                     obj.points = ArrayList<Float64>(points.size)
                     var j: Int64 = 0
                     for (point in points) {
-                        obj.points.insert(j, point)
+                        obj.points.add(point, at: j)
                         j++
                     }
-
                 case _ => ()
             }
         }
@@ -1282,7 +1281,7 @@ public class SVGParserImpl <: SVGParser {
             if (uni == "") {
                 uni = Units.px
             }
-            coords.append(SVGLength(scalar, u: uni))
+            coords.add(SVGLength(scalar, u: uni))
             scan.skipCommaWhitespace()
         }
         return coords
@@ -1434,7 +1433,7 @@ public class SVGParserImpl <: SVGParser {
                 SVGXMLConstants.SVG_RADIAL_GRADIENT_TAG || svg == SVGXMLConstants.SVG_STOP_TAG
                 || svg == SVGXMLConstants.SVG_CLIP_PATH_TAG || svg == SVGXMLConstants.SVG_TEXT_PATH_TAG || svg ==
                 SVGXMLConstants.SVG_PATTERN_TAG || svg == SVGXMLConstants.SVG_VIEW_TAG || svg == SVGXMLConstants.
-                SVG_MASK_TAG => if (let Some(v) <- this.currentElement() as SvgObject) {
+                SVG_MASK_TAG => if (let Some(v) <- (this.currentElement() as SvgObject)) {
                 this.currentElement = v.parent
             } else {
                 throw SVGParseException("Unbalanced end element </${name}> found")
@@ -1740,7 +1739,7 @@ public class SVGParserImpl <: SVGParser {
     }
 
     static func parseColour(val: String): Colour {
-        let opt: String = val.toAsciiLower()
+        var opt: String = val.toAsciiLower()
         if (opt == "white") {
             return Colour(Color.WHITE)
         } else if (opt == "black") {
@@ -1754,8 +1753,13 @@ public class SVGParserImpl <: SVGParser {
         } else if (opt == "gray") {
             return Colour(Color.GRAY)
         } else {
-            if (val.startsWith("#") && val.count("#") == 1) {
-                return Colour(Color(UInt32.parse(val.replace("#", "0x"))))
+            if (opt.startsWith("#") && opt.count("#") == 1) {
+                return Colour(Color(UInt32.parse(opt.replace("#", "0x"))))
+            } else if (opt.startsWith("rgb(") && opt.endsWith(")")) {
+                opt = opt.replace("rgb(", "")
+                opt = opt.replace(")", "")
+                let optArr: Array<String> = opt.split(",", removeEmpty: true)
+                return Colour(Color(UInt8.parse(optArr[0]), UInt8.parse(optArr[1]), UInt8.parse(optArr[2])))
             } else {
                 return Colour(Color(0x000000))
             }
@@ -1783,154 +1787,154 @@ class ColourKeywords {
     }
 
     static init() {
-        colourKeywords.put("aliceblue", 0xf0f8ff)
-        colourKeywords.put("antiquewhite", 0xfaebd7)
-        colourKeywords.put("aqua", 0x00ffff)
-        colourKeywords.put("aquamarine", 0x7fffd4)
-        colourKeywords.put("azure", 0xf0ffff)
-        colourKeywords.put("beige", 0xf5f5dc)
-        colourKeywords.put("bisque", 0xffe4c4)
-        colourKeywords.put("black", 0x000000)
-        colourKeywords.put("blanchedalmond", 0xffebcd)
-        colourKeywords.put("blue", 0x0000ff)
-        colourKeywords.put("blueviolet", 0x8a2be2)
-        colourKeywords.put("brown", 0xa52a2a)
-        colourKeywords.put("burlywood", 0xdeb887)
-        colourKeywords.put("cadetblue", 0x5f9ea0)
-        colourKeywords.put("chartreuse", 0x7fff00)
-        colourKeywords.put("chocolate", 0xd2691e)
-        colourKeywords.put("coral", 0xff7f50)
-        colourKeywords.put("cornflowerblue", 0x6495ed)
-        colourKeywords.put("cornsilk", 0xfff8dc)
-        colourKeywords.put("crimson", 0xdc143c)
-        colourKeywords.put("cyan", 0x00ffff)
-        colourKeywords.put("darkblue", 0x00008b)
-        colourKeywords.put("darkcyan", 0x008b8b)
-        colourKeywords.put("darkgoldenrod", 0xb8860b)
-        colourKeywords.put("darkgray", 0xa9a9a9)
-        colourKeywords.put("darkgreen", 0x006400)
-        colourKeywords.put("darkgrey", 0xa9a9a9)
-        colourKeywords.put("darkkhaki", 0xbdb76b)
-        colourKeywords.put("darkmagenta", 0x8b008b)
-        colourKeywords.put("darkolivegreen", 0x556b2f)
-        colourKeywords.put("darkorange", 0xff8c00)
-        colourKeywords.put("darkorchid", 0x9932cc)
-        colourKeywords.put("darkred", 0x8b0000)
-        colourKeywords.put("darksalmon", 0xe9967a)
-        colourKeywords.put("darkseagreen", 0x8fbc8f)
-        colourKeywords.put("darkslateblue", 0x483d8b)
-        colourKeywords.put("darkslategray", 0x2f4f4f)
-        colourKeywords.put("darkslategrey", 0x2f4f4f)
-        colourKeywords.put("darkturquoise", 0x00ced1)
-        colourKeywords.put("darkviolet", 0x9400d3)
-        colourKeywords.put("deeppink", 0xff1493)
-        colourKeywords.put("deepskyblue", 0x00bfff)
-        colourKeywords.put("dimgray", 0x696969)
-        colourKeywords.put("dimgrey", 0x696969)
-        colourKeywords.put("dodgerblue", 0x1e90ff)
-        colourKeywords.put("firebrick", 0xb22222)
-        colourKeywords.put("floralwhite", 0xfffaf0)
-        colourKeywords.put("forestgreen", 0x228b22)
-        colourKeywords.put("fuchsia", 0xff00ff)
-        colourKeywords.put("gainsboro", 0xdcdcdc)
-        colourKeywords.put("ghostwhite", 0xf8f8ff)
-        colourKeywords.put("gold", 0xffd700)
-        colourKeywords.put("goldenrod", 0xdaa520)
-        colourKeywords.put("gray", 0x808080)
-        colourKeywords.put("green", 0x008000)
-        colourKeywords.put("greenyellow", 0xadff2f)
-        colourKeywords.put("grey", 0x808080)
-        colourKeywords.put("honeydew", 0xf0fff0)
-        colourKeywords.put("hotpink", 0xff69b4)
-        colourKeywords.put("indianred", 0xcd5c5c)
-        colourKeywords.put("indigo", 0x4b0082)
-        colourKeywords.put("ivory", 0xfffff0)
-        colourKeywords.put("khaki", 0xf0e68c)
-        colourKeywords.put("lavender", 0xe6e6fa)
-        colourKeywords.put("lavenderblush", 0xfff0f5)
-        colourKeywords.put("lawngreen", 0x7cfc00)
-        colourKeywords.put("lemonchiffon", 0xfffacd)
-        colourKeywords.put("lightblue", 0xadd8e6)
-        colourKeywords.put("lightcoral", 0xf08080)
-        colourKeywords.put("lightcyan", 0xe0ffff)
-        colourKeywords.put("lightgoldenrodyellow", 0xfafad2)
-        colourKeywords.put("lightgray", 0xd3d3d3)
-        colourKeywords.put("lightgreen", 0x90ee90)
-        colourKeywords.put("lightgrey", 0xd3d3d3)
-        colourKeywords.put("lightpink", 0xffb6c1)
-        colourKeywords.put("lightsalmon", 0xffa07a)
-        colourKeywords.put("lightseagreen", 0x20b2aa)
-        colourKeywords.put("lightskyblue", 0x87cefa)
-        colourKeywords.put("lightslategray", 0x778899)
-        colourKeywords.put("lightslategrey", 0x778899)
-        colourKeywords.put("lightsteelblue", 0xb0c4de)
-        colourKeywords.put("lightyellow", 0xffffe0)
-        colourKeywords.put("lime", 0x00ff00)
-        colourKeywords.put("limegreen", 0x32cd32)
-        colourKeywords.put("linen", 0xfaf0e6)
-        colourKeywords.put("magenta", 0xff00ff)
-        colourKeywords.put("maroon", 0x800000)
-        colourKeywords.put("mediumaquamarine", 0x66cdaa)
-        colourKeywords.put("mediumblue", 0x0000cd)
-        colourKeywords.put("mediumorchid", 0xba55d3)
-        colourKeywords.put("mediumpurple", 0x9370db)
-        colourKeywords.put("mediumseagreen", 0x3cb371)
-        colourKeywords.put("mediumslateblue", 0x7b68ee)
-        colourKeywords.put("mediumspringgreen", 0x00fa9a)
-        colourKeywords.put("mediumturquoise", 0x48d1cc)
-        colourKeywords.put("mediumvioletred", 0xc71585)
-        colourKeywords.put("midnightblue", 0x191970)
-        colourKeywords.put("mintcream", 0xf5fffa)
-        colourKeywords.put("mistyrose", 0xffe4e1)
-        colourKeywords.put("moccasin", 0xffe4b5)
-        colourKeywords.put("navajowhite", 0xffdead)
-        colourKeywords.put("navy", 0x000080)
-        colourKeywords.put("oldlace", 0xfdf5e6)
-        colourKeywords.put("olive", 0x808000)
-        colourKeywords.put("olivedrab", 0x6b8e23)
-        colourKeywords.put("orange", 0xffa500)
-        colourKeywords.put("orangered", 0xff4500)
-        colourKeywords.put("orchid", 0xda70d6)
-        colourKeywords.put("palegoldenrod", 0xeee8aa)
-        colourKeywords.put("palegreen", 0x98fb98)
-        colourKeywords.put("paleturquoise", 0xafeeee)
-        colourKeywords.put("palevioletred", 0xdb7093)
-        colourKeywords.put("papayawhip", 0xffefd5)
-        colourKeywords.put("peachpuff", 0xffdab9)
-        colourKeywords.put("peru", 0xcd853f)
-        colourKeywords.put("pink", 0xffc0cb)
-        colourKeywords.put("plum", 0xdda0dd)
-        colourKeywords.put("powderblue", 0xb0e0e6)
-        colourKeywords.put("purple", 0x800080)
-        colourKeywords.put("rebeccapurple", 0x663399)
-        colourKeywords.put("red", 0xff0000)
-        colourKeywords.put("rosybrown", 0xbc8f8f)
-        colourKeywords.put("royalblue", 0x4169e1)
-        colourKeywords.put("saddlebrown", 0x8b4513)
-        colourKeywords.put("salmon", 0xfa8072)
-        colourKeywords.put("sandybrown", 0xf4a460)
-        colourKeywords.put("seagreen", 0x2e8b57)
-        colourKeywords.put("seashell", 0xfff5ee)
-        colourKeywords.put("sienna", 0xa0522d)
-        colourKeywords.put("silver", 0xc0c0c0)
-        colourKeywords.put("skyblue", 0x87ceeb)
-        colourKeywords.put("slateblue", 0x6a5acd)
-        colourKeywords.put("slategray", 0x708090)
-        colourKeywords.put("slategrey", 0x708090)
-        colourKeywords.put("snow", 0xfffafa)
-        colourKeywords.put("springgreen", 0x00ff7f)
-        colourKeywords.put("steelblue", 0x4682b4)
-        colourKeywords.put("tan", 0xd2b48c)
-        colourKeywords.put("teal", 0x008080)
-        colourKeywords.put("thistle", 0xd8bfd8)
-        colourKeywords.put("tomato", 0xff6347)
-        colourKeywords.put("turquoise", 0x40e0d0)
-        colourKeywords.put("violet", 0xee82ee)
-        colourKeywords.put("wheat", 0xf5deb3)
-        colourKeywords.put("white", 0xffff)
-        colourKeywords.put("whitesmoke", 0xF5F5F5)
-        colourKeywords.put("yellow", 0xff00)
-        colourKeywords.put("yellowgreen", 0x9acd32)
-        colourKeywords.put("transparent", 0x000000)
+        colourKeywords.add("aliceblue", 0xf0f8ff)
+        colourKeywords.add("antiquewhite", 0xfaebd7)
+        colourKeywords.add("aqua", 0x00ffff)
+        colourKeywords.add("aquamarine", 0x7fffd4)
+        colourKeywords.add("azure", 0xf0ffff)
+        colourKeywords.add("beige", 0xf5f5dc)
+        colourKeywords.add("bisque", 0xffe4c4)
+        colourKeywords.add("black", 0x000000)
+        colourKeywords.add("blanchedalmond", 0xffebcd)
+        colourKeywords.add("blue", 0x0000ff)
+        colourKeywords.add("blueviolet", 0x8a2be2)
+        colourKeywords.add("brown", 0xa52a2a)
+        colourKeywords.add("burlywood", 0xdeb887)
+        colourKeywords.add("cadetblue", 0x5f9ea0)
+        colourKeywords.add("chartreuse", 0x7fff00)
+        colourKeywords.add("chocolate", 0xd2691e)
+        colourKeywords.add("coral", 0xff7f50)
+        colourKeywords.add("cornflowerblue", 0x6495ed)
+        colourKeywords.add("cornsilk", 0xfff8dc)
+        colourKeywords.add("crimson", 0xdc143c)
+        colourKeywords.add("cyan", 0x00ffff)
+        colourKeywords.add("darkblue", 0x00008b)
+        colourKeywords.add("darkcyan", 0x008b8b)
+        colourKeywords.add("darkgoldenrod", 0xb8860b)
+        colourKeywords.add("darkgray", 0xa9a9a9)
+        colourKeywords.add("darkgreen", 0x006400)
+        colourKeywords.add("darkgrey", 0xa9a9a9)
+        colourKeywords.add("darkkhaki", 0xbdb76b)
+        colourKeywords.add("darkmagenta", 0x8b008b)
+        colourKeywords.add("darkolivegreen", 0x556b2f)
+        colourKeywords.add("darkorange", 0xff8c00)
+        colourKeywords.add("darkorchid", 0x9932cc)
+        colourKeywords.add("darkred", 0x8b0000)
+        colourKeywords.add("darksalmon", 0xe9967a)
+        colourKeywords.add("darkseagreen", 0x8fbc8f)
+        colourKeywords.add("darkslateblue", 0x483d8b)
+        colourKeywords.add("darkslategray", 0x2f4f4f)
+        colourKeywords.add("darkslategrey", 0x2f4f4f)
+        colourKeywords.add("darkturquoise", 0x00ced1)
+        colourKeywords.add("darkviolet", 0x9400d3)
+        colourKeywords.add("deeppink", 0xff1493)
+        colourKeywords.add("deepskyblue", 0x00bfff)
+        colourKeywords.add("dimgray", 0x696969)
+        colourKeywords.add("dimgrey", 0x696969)
+        colourKeywords.add("dodgerblue", 0x1e90ff)
+        colourKeywords.add("firebrick", 0xb22222)
+        colourKeywords.add("floralwhite", 0xfffaf0)
+        colourKeywords.add("forestgreen", 0x228b22)
+        colourKeywords.add("fuchsia", 0xff00ff)
+        colourKeywords.add("gainsboro", 0xdcdcdc)
+        colourKeywords.add("ghostwhite", 0xf8f8ff)
+        colourKeywords.add("gold", 0xffd700)
+        colourKeywords.add("goldenrod", 0xdaa520)
+        colourKeywords.add("gray", 0x808080)
+        colourKeywords.add("green", 0x008000)
+        colourKeywords.add("greenyellow", 0xadff2f)
+        colourKeywords.add("grey", 0x808080)
+        colourKeywords.add("honeydew", 0xf0fff0)
+        colourKeywords.add("hotpink", 0xff69b4)
+        colourKeywords.add("indianred", 0xcd5c5c)
+        colourKeywords.add("indigo", 0x4b0082)
+        colourKeywords.add("ivory", 0xfffff0)
+        colourKeywords.add("khaki", 0xf0e68c)
+        colourKeywords.add("lavender", 0xe6e6fa)
+        colourKeywords.add("lavenderblush", 0xfff0f5)
+        colourKeywords.add("lawngreen", 0x7cfc00)
+        colourKeywords.add("lemonchiffon", 0xfffacd)
+        colourKeywords.add("lightblue", 0xadd8e6)
+        colourKeywords.add("lightcoral", 0xf08080)
+        colourKeywords.add("lightcyan", 0xe0ffff)
+        colourKeywords.add("lightgoldenrodyellow", 0xfafad2)
+        colourKeywords.add("lightgray", 0xd3d3d3)
+        colourKeywords.add("lightgreen", 0x90ee90)
+        colourKeywords.add("lightgrey", 0xd3d3d3)
+        colourKeywords.add("lightpink", 0xffb6c1)
+        colourKeywords.add("lightsalmon", 0xffa07a)
+        colourKeywords.add("lightseagreen", 0x20b2aa)
+        colourKeywords.add("lightskyblue", 0x87cefa)
+        colourKeywords.add("lightslategray", 0x778899)
+        colourKeywords.add("lightslategrey", 0x778899)
+        colourKeywords.add("lightsteelblue", 0xb0c4de)
+        colourKeywords.add("lightyellow", 0xffffe0)
+        colourKeywords.add("lime", 0x00ff00)
+        colourKeywords.add("limegreen", 0x32cd32)
+        colourKeywords.add("linen", 0xfaf0e6)
+        colourKeywords.add("magenta", 0xff00ff)
+        colourKeywords.add("maroon", 0x800000)
+        colourKeywords.add("mediumaquamarine", 0x66cdaa)
+        colourKeywords.add("mediumblue", 0x0000cd)
+        colourKeywords.add("mediumorchid", 0xba55d3)
+        colourKeywords.add("mediumpurple", 0x9370db)
+        colourKeywords.add("mediumseagreen", 0x3cb371)
+        colourKeywords.add("mediumslateblue", 0x7b68ee)
+        colourKeywords.add("mediumspringgreen", 0x00fa9a)
+        colourKeywords.add("mediumturquoise", 0x48d1cc)
+        colourKeywords.add("mediumvioletred", 0xc71585)
+        colourKeywords.add("midnightblue", 0x191970)
+        colourKeywords.add("mintcream", 0xf5fffa)
+        colourKeywords.add("mistyrose", 0xffe4e1)
+        colourKeywords.add("moccasin", 0xffe4b5)
+        colourKeywords.add("navajowhite", 0xffdead)
+        colourKeywords.add("navy", 0x000080)
+        colourKeywords.add("oldlace", 0xfdf5e6)
+        colourKeywords.add("olive", 0x808000)
+        colourKeywords.add("olivedrab", 0x6b8e23)
+        colourKeywords.add("orange", 0xffa500)
+        colourKeywords.add("orangered", 0xff4500)
+        colourKeywords.add("orchid", 0xda70d6)
+        colourKeywords.add("palegoldenrod", 0xeee8aa)
+        colourKeywords.add("palegreen", 0x98fb98)
+        colourKeywords.add("paleturquoise", 0xafeeee)
+        colourKeywords.add("palevioletred", 0xdb7093)
+        colourKeywords.add("papayawhip", 0xffefd5)
+        colourKeywords.add("peachpuff", 0xffdab9)
+        colourKeywords.add("peru", 0xcd853f)
+        colourKeywords.add("pink", 0xffc0cb)
+        colourKeywords.add("plum", 0xdda0dd)
+        colourKeywords.add("powderblue", 0xb0e0e6)
+        colourKeywords.add("purple", 0x800080)
+        colourKeywords.add("rebeccapurple", 0x663399)
+        colourKeywords.add("red", 0xff0000)
+        colourKeywords.add("rosybrown", 0xbc8f8f)
+        colourKeywords.add("royalblue", 0x4169e1)
+        colourKeywords.add("saddlebrown", 0x8b4513)
+        colourKeywords.add("salmon", 0xfa8072)
+        colourKeywords.add("sandybrown", 0xf4a460)
+        colourKeywords.add("seagreen", 0x2e8b57)
+        colourKeywords.add("seashell", 0xfff5ee)
+        colourKeywords.add("sienna", 0xa0522d)
+        colourKeywords.add("silver", 0xc0c0c0)
+        colourKeywords.add("skyblue", 0x87ceeb)
+        colourKeywords.add("slateblue", 0x6a5acd)
+        colourKeywords.add("slategray", 0x708090)
+        colourKeywords.add("slategrey", 0x708090)
+        colourKeywords.add("snow", 0xfffafa)
+        colourKeywords.add("springgreen", 0x00ff7f)
+        colourKeywords.add("steelblue", 0x4682b4)
+        colourKeywords.add("tan", 0xd2b48c)
+        colourKeywords.add("teal", 0x008080)
+        colourKeywords.add("thistle", 0xd8bfd8)
+        colourKeywords.add("tomato", 0xff6347)
+        colourKeywords.add("turquoise", 0x40e0d0)
+        colourKeywords.add("violet", 0xee82ee)
+        colourKeywords.add("wheat", 0xf5deb3)
+        colourKeywords.add("white", 0xffff)
+        colourKeywords.add("whitesmoke", 0xF5F5F5)
+        colourKeywords.add("yellow", 0xff00)
+        colourKeywords.add("yellowgreen", 0x9acd32)
+        colourKeywords.add("transparent", 0x000000)
     }
 }

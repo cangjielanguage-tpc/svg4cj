@@ -8,7 +8,7 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class BugfixBasics8 {
+class RenderBasics8 {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false

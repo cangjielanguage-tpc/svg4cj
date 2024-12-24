@@ -122,107 +122,107 @@ class Index {
                 Button("getSVGPixelMap").fontSize(14).onClick {
                     => Router.push(url: "getSVGPixelMap")
                 }
-                Button("Bugfix3D").fontSize(14).onClick {
-                    => Router.push(url: "Bugfix3D")
+                Button("Render3D").fontSize(14).onClick {
+                    => Router.push(url: "Render3D")
                 }
-                Button("Bugfix58").fontSize(14).onClick {
-                    => Router.push(url: "Bugfix58")
+                Button("Render58").fontSize(14).onClick {
+                    => Router.push(url: "Render58")
                 }
-                Button("BugfixAnimate").fontSize(14).onClick {
-                    => Router.push(url: "BugfixAnimate")
+                Button("RenderAnimate").fontSize(14).onClick {
+                    => Router.push(url: "RenderAnimate")
                 }
-                Button("BugfixBasics5").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics5")
+                Button("RenderBasics5").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics5")
                 }
-                Button("BugfixBasics6").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics6")
+                Button("RenderBasics6").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics6")
                 }
-                Button("BugfixBasics7").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics7")
+                Button("RenderBasics7").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics7")
                 }
-                Button("BugfixBasics8").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics8")
+                Button("RenderBasics8").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics8")
                 }
-                Button("BugfixBasics9").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics9")
+                Button("RenderBasics9").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics9")
                 }
-                Button("BugfixBasics14").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics14")
+                Button("RenderBasics14").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics14")
                 }
-                Button("BugfixBasics16").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics16")
+                Button("RenderBasics16").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics16")
                 }
-                Button("BugfixBasics17").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics17")
+                Button("RenderBasics17").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics17")
                 }
-                Button("BugfixBasics18").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics18")
+                Button("RenderBasics18").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics18")
                 }
-                Button("BugfixBasics19").fontSize(14).onClick {
-                    => Router.push(url: "BugfixBasics19")
+                Button("RenderBasics19").fontSize(14).onClick {
+                    => Router.push(url: "RenderBasics19")
                 }
-                Button("BugfixClipPath").fontSize(14).onClick {
-                    => Router.push(url: "BugfixClipPath")
+                Button("RenderClipPath").fontSize(14).onClick {
+                    => Router.push(url: "RenderClipPath")
                 }
-                Button("BugfixDesc").fontSize(14).onClick {
-                    => Router.push(url: "BugfixDesc")
+                Button("RenderDesc").fontSize(14).onClick {
+                    => Router.push(url: "RenderDesc")
                 }
-                Button("BugfixFeComponentTransfer").fontSize(14).onClick {
-                    => Router.push(url: "BugfixFeComponentTransfer")
+                Button("RenderFeComponentTransfer").fontSize(14).onClick {
+                    => Router.push(url: "RenderFeComponentTransfer")
                 }
-                Button("BugfixFeMorphology").fontSize(14).onClick {
-                    => Router.push(url: "BugfixFeMorphology")
+                Button("RenderFeMorphology").fontSize(14).onClick {
+                    => Router.push(url: "RenderFeMorphology")
                 }
-                Button("BugfixMaks").fontSize(14).onClick {
-                    => Router.push(url: "BugfixMaks")
+                Button("RenderMaks").fontSize(14).onClick {
+                    => Router.push(url: "RenderMaks")
                 }
-                Button("BugfixMarker").fontSize(14).onClick {
-                    => Router.push(url: "BugfixMarker")
+                Button("RenderMarker").fontSize(14).onClick {
+                    => Router.push(url: "RenderMarker")
                 }
-                Button("BugfixMarker1").fontSize(14).onClick {
-                    => Router.push(url: "BugfixMarker1")
+                Button("RenderMarker1").fontSize(14).onClick {
+                    => Router.push(url: "RenderMarker1")
                 }
-                Button("BugfixMarker2").fontSize(14).onClick {
-                    => Router.push(url: "BugfixMarker2")
+                Button("RenderMarker2").fontSize(14).onClick {
+                    => Router.push(url: "RenderMarker2")
                 }
-                Button("BugfixPattern").fontSize(14).onClick {
-                    => Router.push(url: "BugfixPattern")
+                Button("RenderPattern").fontSize(14).onClick {
+                    => Router.push(url: "RenderPattern")
                 }
-                Button("BugfixPloygon").fontSize(14).onClick {
-                    => Router.push(url: "BugfixPloygon")
+                Button("RenderPloygon").fontSize(14).onClick {
+                    => Router.push(url: "RenderPloygon")
                 }
-                Button("BugfixPloyLine").fontSize(14).onClick {
-                    => Router.push(url: "BugfixPloyLine")
+                Button("RenderPloyLine").fontSize(14).onClick {
+                    => Router.push(url: "RenderPloyLine")
                 }
-                Button("BugfixRect").fontSize(14).onClick {
-                    => Router.push(url: "BugfixRect")
+                Button("RenderRect").fontSize(14).onClick {
+                    => Router.push(url: "RenderRect")
                 }
-                Button("BugfixStop").fontSize(14).onClick {
-                    => Router.push(url: "BugfixStop")
+                Button("RenderStop").fontSize(14).onClick {
+                    => Router.push(url: "RenderStop")
                 }
-                Button("BugfixUse").fontSize(14).onClick {
-                    => Router.push(url: "BugfixUse")
+                Button("RenderUse").fontSize(14).onClick {
+                    => Router.push(url: "RenderUse")
                 }
-                Button("BugfixTspan").fontSize(14).onClick {
-                    => Router.push(url: "BugfixTspan")
+                Button("RenderTspan").fontSize(14).onClick {
+                    => Router.push(url: "RenderTspan")
                 }
-                Button("BugfixText").fontSize(14).onClick {
-                    => Router.push(url: "BugfixText")
+                Button("RenderText").fontSize(14).onClick {
+                    => Router.push(url: "RenderText")
                 }
-                Button("BugfixFunDraw").fontSize(14).onClick {
-                    => Router.push(url: "BugfixFunDraw")
+                Button("RenderFunDraw").fontSize(14).onClick {
+                    => Router.push(url: "RenderFunDraw")
                 }
                 Button("RenderAbstract").fontSize(14).onClick {
                     => Router.push(url: "RenderAbstract")
                 }
-                Button("BugfixA").fontSize(14).onClick {
-                    => Router.push(url: "BugfixA")
+                Button("RenderA").fontSize(14).onClick {
+                    => Router.push(url: "RenderA")
                 }
-                Button("BugfixFeColorMatrix").fontSize(14).onClick {
-                    => Router.push(url: "BugfixFeColorMatrix")
+                Button("RenderFeColorMatrix").fontSize(14).onClick {
+                    => Router.push(url: "RenderFeColorMatrix")
                 }
-                Button("BugfixFeDiffuseLighting").fontSize(14).onClick {
-                    => Router.push(url: "BugfixFeDiffuseLighting")
+                Button("RenderFeDiffuseLighting").fontSize(14).onClick {
+                    => Router.push(url: "RenderFeDiffuseLighting")
                 }
             }.width(100.percent).backgroundColor(Color(0xFFF1A493))
         }.scrollable(ScrollDirection.Vertical)

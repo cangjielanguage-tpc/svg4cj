@@ -10,6 +10,5 @@ internal import ohos.state_manage.*
 internal import ohos.router.*
 internal import ohos.ability.*
 internal import ohos.window.*
-internal import cj_res_entry.app
 internal import svg.*
 internal import ohos.resource_manager.*

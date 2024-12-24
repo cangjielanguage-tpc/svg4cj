@@ -5,7 +5,7 @@
 <p align="center">
 <img alt="" src="https://img.shields.io/badge/release-v0.0.1-brightgreen" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/build-pass-brightgreen" style="display: inline-block;" />
-<img alt="" src="https://img.shields.io/badge/cjc-v0.53.13-brightgreen" style="display: inline-block;" />
+<img alt="" src="https://img.shields.io/badge/cjc-v0.58.3-brightgreen" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/cjcov-NA-red" style="display: inline-block;" />
 <img alt="" src="https://img.shields.io/badge/project-open-brightgreen" style="display: inline-block;" />
 </p>
@@ -56,7 +56,7 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
 
 ### 接口说明
 
-主要类和函数接口说明详见 [API](doc/API.md)
+主要类和函数接口说明详见 [API](doc/feature_api.md)
 
 ## 使用说明
 
@@ -140,12 +140,10 @@ class RenderMerman {
 
 在下述版本验证通过：
 
-    DevEco Studio NEXT Beta1(5.0.3.910)
-    Cangjie Support Plugin 5.0.3.906
+    DevEco Studio 5.0.2 Developer Beta1(5.0.7.26)
+    Cangjie Support Plugin 5.0.7.26.013
 
-1. 目前使用本库在渲染 SVG 图像时，只能渲染图像的轮廓(stroke)效果， 填充(fill)效果暂未支持。
-
-2. 只支持 SVG 1.1 规范格式图像中的以下元素：
+1只支持 SVG 1.1 规范格式图像中的以下元素：
 ```text
    <svg>
    <g>
@@ -176,6 +174,10 @@ class RenderMerman {
    <mask>
    <style>
 ```
+2. 本库默认支持的 Text 标签内容字体大小约为 17.px，若需要动态调整字体大小，请自行设定。
+3. .svg 源文件开头第一行若以回车开头，会导致渲染不生效。请不要以回车开头。
+4. .svg 源文件中若颜色值为 #fff，CangjieUI 默认补全为 #000fff，而非 #fff000，建议颜色值手动补全。
+5. 暂未支持图片渐变效果。
 
 ## 开源协议
 

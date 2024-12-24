@@ -123,7 +123,7 @@ public class SVGBase {
         }
         let result: ?SvgElementBase = getElementById2((this.rootElement as SvgContainer)(), id)
         if (let Some(v) <- result) {
-            this.idToElementMap.put(id, v)
+            this.idToElementMap.add(id, v)
         }
         return result
     }
@@ -143,7 +143,7 @@ public class SVGBase {
                 if (id == childElem.id) {
                     return childElem
                 }
-                if (let Some(child) <- child as SvgContainer) {
+                if (let Some(child) <- (child as SvgContainer)) {
                     let found: ?SvgElementBase = getElementById2(child, id)
                     if (found.isSome()) {
                         return found
@@ -163,9 +163,9 @@ public class SVGBase {
         obj = (this.rootElement as SvgObject)()
 
         if (obj.getNodeName() == nodeName) {
-            result.append(obj)
+            result.add(obj)
         }
-        if (let Some(obj) <- obj as SvgContainer) {
+        if (let Some(obj) <- (obj as SvgContainer)) {
             let arr: ArrayList<SvgObject> = obj.getChildren()
             for (element in arr) {
                 getElementsByTagName(nodeName, result, element)
@@ -311,7 +311,7 @@ public open class SvgConditionalContainer <: SvgElement & SvgContainer & SvgCond
     }
 
     public open func addChild(elem: SvgObject): Unit {
-        this.children.append(elem)
+        this.children.add(elem)
     }
 
     public func setRequiredFeatures(features: HashSet<String>): Unit {
@@ -450,8 +450,8 @@ class CurrentColor <: SvgPaint {
 }
 
 class PaintReference <: SvgPaint {
-    var href: String
-    var fallback: ?SvgPaint
+    var href: String = ""
+    var fallback: ?SvgPaint = Option<SvgPaint>.None
 
     init(href: String, fallback: ?SvgPaint) {
         super()
@@ -782,7 +782,7 @@ interface TextChild {
 open class TextContainer <: SvgConditionalContainer {
     public func addChild(elem: SvgObject): Unit {
         try {
-            this.children.append(elem)
+            this.children.add(elem)
         } catch (e: Exception) {
         }
     }
@@ -926,7 +926,7 @@ open class GradientElement <: SvgElementBase & SvgContainer & Equatable<Gradient
 
     public func addChild(elem: SvgObject): Unit {
         if (elem is Stop) {
-            this.children.append(elem)
+            this.children.add(elem)
         } else {
             throw SVGParseException("Gradient elements cannot contain " + "${elem}" + " elements.")
         }
@@ -1105,8 +1105,8 @@ class PathDefinition <: PathInterface {
     var d: String = ""
 
     init() {
-        this.commands = Array<Byte>(8, item: 0)
-        this.coords = Array<Float64>(16, item: 0.0)
+        this.commands = Array<Byte>(8, repeat: 0)
+        this.coords = Array<Float64>(16, repeat: 0.0)
     }
 
     func isEmpty(): Bool {
@@ -1115,7 +1115,7 @@ class PathDefinition <: PathInterface {
 
     private func addCommand(value: Byte): Unit {
         if (this.commandsLength == this.commands.size) {
-            let newCommands: Array<Byte> = Array<Byte>(this.commands.size * 2, item: 0)
+            let newCommands: Array<Byte> = Array<Byte>(this.commands.size * 2, repeat: 0)
             for (i in 0..this.commands.size) {
                 newCommands[i] = this.commands[i]
             }
@@ -1127,7 +1127,7 @@ class PathDefinition <: PathInterface {
 
     private func coordsEnsure(num: Int64): Unit {
         if (this.coords.size < (this.coordsLength + num)) {
-            let newCoords: Array<Float64> = Array<Float64>(this.coords.size * 2, item: 0.0)
+            let newCoords: Array<Float64> = Array<Float64>(this.coords.size * 2, repeat: 0.0)
             for (i in 0..this.coords.size) {
                 newCoords[i] = this.coords[i]
             }

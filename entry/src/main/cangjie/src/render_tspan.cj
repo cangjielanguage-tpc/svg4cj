@@ -8,7 +8,7 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class BugfixTspan {
+class RenderTspan {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false

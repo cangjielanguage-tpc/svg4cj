@@ -376,8 +376,8 @@ class XmlReader {
         if (buf[0] == b'>') {
             status = Status.MarkupClose
             buf.skip(1) // skip '>'
-            skipWhitespace()
         }
+        skipWhitespace()
     }
 
     private func skipWhitespace(): Unit {
@@ -424,7 +424,8 @@ class XmlReader {
     private func readQname(): QName {
         var i = 0
         var prefix: String = ""
-        while (buf[i] != b'=' && buf[i] != b' ' && buf[i] != b'>' && buf[i] != b'\n' && buf[i] != b'\t') {
+        while (buf[i] != b'>' && buf[i] != b'=' && buf[i] != b' ' && buf[i] != b'\r' && buf[i] != b'\n' && buf[i] !=
+                b'\t') {
             if (buf[i] == b':') {
                 prefix = buf.read(i)
                 buf.skip(1)

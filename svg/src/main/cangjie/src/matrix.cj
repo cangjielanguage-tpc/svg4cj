@@ -359,7 +359,7 @@ public class Matrix2D2 {
     func transformPoints(points: Array<Point>, origin: Point): Array<Point> {
         let transformedPoints: ArrayList<Point> = ArrayList<Point>()
         for (point in points) {
-            transformedPoints.append(transformPoint(point.x, point.y, origin: origin))
+            transformedPoints.add(transformPoint(point.x, point.y, origin: origin))
         }
         return transformedPoints.toArray()
     }
