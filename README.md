@@ -34,7 +34,7 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
 │  └─src
 │      └─main
 │          ├─cangjie
-│          │  └─src           # 框架代码目录
+│          │  └─src           # 库源代码目录
 │          └─resources
 ├─README.md  # svg4cj 介绍及使用说明
 ```
@@ -140,8 +140,8 @@ class RenderMerman {
 
 在下述版本验证通过：
 
-    DevEco Studio 5.0.2 Developer Beta1(5.0.7.26)
-    Cangjie Support Plugin 5.0.7.26.013
+    DevEco Studio 5.0.1 Release
+    Cangjie Support Plugin 5.0.5.306
 
 1只支持 SVG 1.1 规范格式图像中的以下元素：
 ```text
