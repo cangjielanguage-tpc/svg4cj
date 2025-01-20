@@ -8,7 +8,7 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
 
 ### 1.1 Svg4cj
 
-#### 1.1.1 EntryOhos Class API Description
+#### 1.1.1 API Description
 
 ```cangjie
 public class SVGImageViewModel {
@@ -21,7 +21,7 @@ public class SVGImageViewModel {
     /*
      * 设置图表绘制的上下文
      * 
-     * 参数 context2D - 图表绘制的上下文
+     * 参数 context2D - 图表绘制的上下文，参考 ohos 画布组件中的 class CanvasRenderingContext2D 绘制对象类
      */
     public func setContext2D(context2D: CanvasRenderingContext2D): Unit
 
@@ -35,9 +35,9 @@ public class SVGImageViewModel {
     public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css): Unit
 
     /*
-     * 设置渲染可选项，只能修改 css 样式，无法通过接口修改 svg 原有形状
+     * 设置自定义 css 样式，无法通过此接口修改 svg 原有形状
      * 
-     * 参数 css - 要传入的自定义渲染可选项
+     * 参数 css - 设置自定义 css 样式
      * 参数 context - Ability状态上下文
      */
     public func setCSS(css: String, context: ?AbilityContext): Unit
@@ -45,7 +45,7 @@ public class SVGImageViewModel {
     /*
      * 根据资源对象设置svg 并渲染
      * 
-     * 参数 resource - Resource对象
+     * 参数 resource - Resource对象，参考 ohos 资源管理下的 class Resource 资源类
      * 参数 context - Ability状态上下文
      */
     public func setImageResource(resource: OhosResource, context: ?AbilityContext): Unit
@@ -59,12 +59,12 @@ public class SVGImageViewModel {
     public func setImageRawfile(filename: String, context: ?AbilityContext): Unit
 
     /*
-     * 根据svg String内容设置svg 并渲染
+     * 根据 svg 源文件中的内容设置svg 并渲染
      * 
-     * 参数 url - svg String内容
+     * 参数 data - svg 源文件的内容
      * 参数 context - Ability状态上下文
      */
-    public func setFromString(url: String, context: ?AbilityContext): Unit
+    public func setFromString(data: String, context: ?AbilityContext): Unit
     
     /*
      * 生成svg类型的PixelMap对象，目前缺少离屏绘制对象(OffscreenCanvasRenderingContext2D)，导致 pixelMap 无法生成，此接口暂无法使用
