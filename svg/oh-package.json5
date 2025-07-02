@@ -1,10 +1,12 @@
 {
-  "name": "svg",
-  "version": "1.0.0",
-  "description": "Please describe the basic information.",
+  "name": "@cangjie-tpc/svg",
+  "version": "2.0.0",
+  "description": "svg是一个专注于.svg格式图片解析和渲染的库",
   "main": "",
-  "author": "",
+  "author": "cangjie-tpc",
+  "types": "./Index.d.ets",
   "license": "Apache-2.0",
+  "repository": "https://gitcode.com/Cangjie-TPC/svg4cj.git",
   "dependencies": {
   }
 }

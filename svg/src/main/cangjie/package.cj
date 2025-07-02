@@ -11,7 +11,8 @@ internal import std.collection.HashSet
 internal import std.collection.ArrayList
 internal import std.collection.LinkedList
 internal import std.math.*
-internal import encoding.base64.*
+internal import std.sync.*
+internal import stdx.encoding.base64.*
 internal import ohos.base.*
 internal import ohos.image.PixelMap
 internal import ohos.image.createPixelMap

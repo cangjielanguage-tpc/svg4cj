@@ -30,6 +30,9 @@ public class SVGRenderer {
         this.state = RendererState(Option<RendererState>.None)
         this.stateStack = LinkedList<RendererState>()
         updateStyle(this.state, Style.getDefaultStyle())
+        let defaultFontSize: Float64 = this.state.style.fontSize.floatValue(this)
+        this.state.fillPaint.setFontSize(defaultFontSize)
+        this.state.strokePaint.setFontSize(defaultFontSize)
         this.state.spacePreserve = false
         this.stateStack.addLast(RendererState(this.state))
         this.matrixStack = LinkedList<Matrix2D2>()
@@ -46,6 +49,7 @@ public class SVGRenderer {
         }
 
         if (isSpecified(style, Style.SPECIFIED_FILL)) {
+            state.fillSpecified = true
             state.style.fill = style.fill
             if (style.fill.isSome() && style.fill() != Colour.TRANSPARENT) {
                 state.hasFill = true
@@ -97,6 +101,8 @@ public class SVGRenderer {
 
         if (isSpecified(style, Style.SPECIFIED_STROKE_WIDTH)) {
             state.style.strokeWidth = style.strokeWidth
+            state.strokePaint.setStrokeWidth(state.style.strokeWidth.floatValue(this))
+        } else {
             state.strokePaint.setStrokeWidth(state.style.strokeWidth.floatValue(this))
         }
 
@@ -168,12 +174,17 @@ public class SVGRenderer {
         if (isSpecified(style, Style.SPECIFIED_FONT_SIZE)) {
             let currentFontSize: Float64 = getCurrentFontSize()
             state.style.fontSize = style.fontSize
-            state.fillPaint.setFontSize(style.fontSize.floatValue(this, max: currentFontSize))
-            state.strokePaint.setFontSize(style.fontSize.floatValue(this, max: currentFontSize))
+            let resolvedFontSize: Float64 = style.fontSize.floatValue(this, max: currentFontSize)
+            state.fillPaint.setFontSize(resolvedFontSize)
+            state.strokePaint.setFontSize(resolvedFontSize)
         }
 
         if (isSpecified(style, Style.SPECIFIED_FONT_FAMILY)) {
             state.style.fontFamily = style.fontFamily
+            if (!style.fontFamily.isEmpty()) {
+                state.fillPaint.setFontFamily(style.fontFamily[0])
+                state.strokePaint.setFontFamily(style.fontFamily[0])
+            }
         }
 
         if (isSpecified(style, Style.SPECIFIED_FONT_WEIGHT)) {
@@ -198,10 +209,17 @@ public class SVGRenderer {
             } else {
                 state.style.fontWeight = style.fontWeight
             }
+            let fontWeight = getFontWeight(state.style.fontWeight)
+            state.fillPaint.setFontWeight(fontWeight)
+            state.strokePaint.setFontWeight(fontWeight)
         }
 
         if (isSpecified(style, Style.SPECIFIED_FONT_STYLE)) {
             state.style.fontStyle = style.fontStyle
+            if (let Some(v) <- state.style.fontStyle) {
+                state.fillPaint.setFontStyle(v)
+                state.strokePaint.setFontStyle(v)
+            }
         }
 
         if (isSpecified(style, Style.SPECIFIED_FONT_STRETCH)) {
@@ -301,9 +319,64 @@ public class SVGRenderer {
         return (style.specifiedFlags & flag) != 0
     }
 
+    private func getFontWeight(weight: Float64): FontWeight {
+        if (weight <= 150.0) {
+            return FontWeight.W100
+        } else if (weight <= 250.0) {
+            return FontWeight.W200
+        } else if (weight <= 350.0) {
+            return FontWeight.W300
+        } else if (weight <= 450.0) {
+            return FontWeight.W400
+        } else if (weight <= 550.0) {
+            return FontWeight.W500
+        } else if (weight <= 650.0) {
+            return FontWeight.W600
+        } else if (weight <= 750.0) {
+            return FontWeight.W700
+        } else if (weight <= 850.0) {
+            return FontWeight.W800
+        }
+        return FontWeight.W900
+    }
+
     private func setPaintColour(state: RendererState, isFill: Bool, paint: SvgPaint): Unit {
         var col: Color
-        if (let Some(paint) <- (paint as Colour)) {
+        if (let Some(contextPaint) <- (paint as ContextPaint)) {
+            let source: ?Paint = if (contextPaint.isFill) {
+                state.contextFillPaint
+            } else {
+                state.contextStrokePaint
+            }
+            if (let Some(v) <- source) {
+                if (isFill) {
+                    let replacement: Paint = Paint(v)
+                    replacement.setStroke(false)
+                    replacement.setFontSize(state.fillPaint.getFontSize())
+                    replacement.setFontFamily(state.fillPaint.getFontFamily())
+                    replacement.setFontWeight(state.fillPaint.getFontWeight())
+                    replacement.setFontStyle(state.fillPaint.getFontStyle())
+                    replacement.setFontAlign(state.fillPaint.getFontAlign())
+                    replacement.setFontBaseline(state.fillPaint.getFontBaseline())
+                    state.fillPaint = replacement
+                } else {
+                    let replacement: Paint = Paint(v)
+                    replacement.setStroke(true)
+                    replacement.setFontSize(state.strokePaint.getFontSize())
+                    replacement.setFontFamily(state.strokePaint.getFontFamily())
+                    replacement.setFontWeight(state.strokePaint.getFontWeight())
+                    replacement.setFontStyle(state.strokePaint.getFontStyle())
+                    replacement.setFontAlign(state.strokePaint.getFontAlign())
+                    replacement.setFontBaseline(state.strokePaint.getFontBaseline())
+                    state.strokePaint = replacement
+                }
+            } else if (isFill) {
+                state.hasFill = false
+            } else {
+                state.hasStroke = false
+            }
+            return
+        } else if (let Some(paint) <- (paint as Colour)) {
             col = paint.colour
         } else if (let Some(v) <- (paint as CurrentColor)) {
             col = state.style.color.colour
@@ -327,6 +400,11 @@ public class SVGRenderer {
 
     func getDPI(): Float64 {
         return this.dpi
+    }
+
+    // 返回当前是否处于 objectBoundingBox 上下文。floatValueX/Y 据此决定是否对 px 做 px2vp。
+    func isInObjectBoundingBox(): Bool {
+        return this.state.inObjectBoundingBox
     }
 
     func getCurrentViewPortInUserUnits(): Box {
@@ -384,7 +462,7 @@ public class SVGRenderer {
             }
             resetState()
             checkXMLSpaceAttribute(rootObj)
-            statePush(isRootContext: true)
+            statePush()
             var viewPort: Box
             if (renderOptions.hasViewPort()) {
                 let optValue = renderOptions.viewPort
@@ -393,11 +471,11 @@ public class SVGRenderer {
                 viewPort = Box(rootObj.viewBox.minX, rootObj.viewBox.minY, rootObj.viewBox.width, rootObj.viewBox.height
                 )
             }
-            if (!rootObj.width.isZero()) {
+            if (rootObj.width.isSet()) {
                 viewPort.width = rootObj.width.floatValueBox(this)
             }
 
-            if (!rootObj.height.isZero()) {
+            if (rootObj.height.isSet()) {
                 viewPort.height = rootObj.height.floatValueBox(this)
             }
             renderSvg4(rootObj, viewPort, viewBox, preserveAspectRatio, context)
@@ -439,10 +517,12 @@ public class SVGRenderer {
         if (viewPort.width == 0.0 || viewPort.height == 0.0) {
             return
         }
-        positioning = if (let Some(v) <- obj.preserveAspectRatio) {
-            v
-        } else {
-            PreserveAspectRatio.LETTERBOX
+        if (positioning.isNone()) {
+            positioning = if (let Some(v) <- obj.preserveAspectRatio) {
+                v
+            } else {
+                PreserveAspectRatio.LETTERBOX
+            }
         }
         updateStyleForElement(this.state, obj)
         if (!display()) {
@@ -455,7 +535,8 @@ public class SVGRenderer {
         }
         checkForClipPath(obj, boundingBox: this.state.viewPort)
         if (viewBox != Box(0.0, 0.0, 0.0, 0.0)) {
-            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, viewBox, positioning()))
+            let transform: Matrix2D2 = calculateViewBoxTransform(this.state.viewPort, viewBox, positioning())
+            this.canvas.concat(transform)
             this.state.viewBox = obj.viewBox
         } else {
             this.canvas.translate(this.state.viewPort.minX, this.state.viewPort.minY, Paint(Option<Paint>.None))
@@ -521,7 +602,7 @@ public class SVGRenderer {
         let clipPath: ClipPath = (ref as ClipPath)()
         this.stateStack.addLast(this.state)
         this.state = findInheritFromAncestorState(clipPath)
-        let userUnits: Bool = (clipPath.clipPathUnitsAreUser == false || clipPath.clipPathUnitsAreUser)
+        let userUnits: Bool = (!clipPath.clipPathUnitsAreUserSpecified || clipPath.clipPathUnitsAreUser)
         let m: Matrix2D2 = Matrix2D2()
         if (!userUnits) {
             m.translate(boundingBox.minX, y: boundingBox.minY)
@@ -545,7 +626,7 @@ public class SVGRenderer {
                 cp.addPath(v)
             }
         }
-        this.canvas.getContext().transform(m.a, m.b, m.c, m.d, m.getE(), m.getF())
+        this.canvas.transform(m.a, m.b, m.c, m.d, m.getE(), m.getF())
         this.state = this.stateStack.removeLast() ?? RendererState(Option<RendererState>.None)
         return cp
     }
@@ -572,30 +653,21 @@ public class SVGRenderer {
         }
         let imageW = viewPort.width / scale
         let imageH = viewPort.height / scale
-        if (positioning.getAlignment() != "") {
-            if (positioning.getAlignment() == Alignment.xMidYMin) {
-            } else if (positioning.getAlignment() == Alignment.xMidYMid) {
-            } else if (positioning.getAlignment() == Alignment.xMidYMax) {
-                xOffset -= (viewBox.width - imageW) / 2.0
-            } else if (positioning.getAlignment() == Alignment.xMaxYMin) {}
-            else if (positioning.getAlignment() == Alignment.xMaxYMid) {}
-            else if (positioning.getAlignment() == Alignment.xMaxYMax) {
-                xOffset -= (viewBox.width - imageW)
-            } else {
-            }
+        let alignment: String = positioning.getAlignment()
+        if (alignment == Alignment.xMidYMin || alignment == Alignment.xMidYMid ||
+            alignment == Alignment.xMidYMax) {
+            xOffset -= (viewBox.width - imageW) / 2.0
+        } else if (alignment == Alignment.xMaxYMin || alignment == Alignment.xMaxYMid ||
+            alignment == Alignment.xMaxYMax) {
+            xOffset -= (viewBox.width - imageW)
         }
 
-        if (positioning.getAlignment() != "") {
-            if (positioning.getAlignment() == Alignment.xMinYMid) {
-            } else if (positioning.getAlignment() == Alignment.xMidYMid) {}
-            else if (positioning.getAlignment() == Alignment.xMaxYMid) {
-                yOffset -= (viewBox.height - imageH) / 2.0
-            } else if (positioning.getAlignment() == Alignment.xMinYMax) {}
-            else if (positioning.getAlignment() == Alignment.xMidYMax) {}
-            else if (positioning.getAlignment() == Alignment.xMaxYMax) {
-                yOffset -= (viewBox.height - imageH)
-            } else {
-            }
+        if (alignment == Alignment.xMinYMid || alignment == Alignment.xMidYMid ||
+            alignment == Alignment.xMaxYMid) {
+            yOffset -= (viewBox.height - imageH) / 2.0
+        } else if (alignment == Alignment.xMinYMax || alignment == Alignment.xMidYMax ||
+            alignment == Alignment.xMaxYMax) {
+            yOffset -= (viewBox.height - imageH)
         }
         m.translate(viewPort.minX, y: viewPort.minY)
         m.scale(scale, y: scale)
@@ -604,21 +676,39 @@ public class SVGRenderer {
     }
 
     private func pushLayer(o!: Float64 = 1.0): Bool {
+        var simpleMaskPath: ?Path2D = None
+        if (this.state.style.mask != "") {
+            let ref: ?SvgObject = this.document().resolveIRI(this.state.style.mask)
+            if (let Some(v) <- ref) {
+                if (let Some(mask) <- (v as Mask)) {
+                    if (let Some(maskPath) <- simpleOpaqueMaskPath(mask)) {
+                        simpleMaskPath = Some(maskPath)
+                    }
+                }
+            }
+        }
         var opacityAdjustment = o
         if (this.state.style.fillOpacity != 1.0) {
-            this.canvas.getContext().globalAlpha(this.state.style.fillOpacity)
+            this.canvas.setGlobalAlpha(this.state.style.fillOpacity)
         }
         if (opacityAdjustment != 1.0) {
-            this.canvas.getContext().globalAlpha(opacityAdjustment)
+            this.canvas.setGlobalAlpha(opacityAdjustment)
         }
         if (!requiresCompositing() && opacityAdjustment == 1.0) {
             return false
         }
         if (this.state.style.opacity != 1.0) {
-            this.canvas.getContext().globalAlpha(this.state.style.opacity)
+            this.canvas.setGlobalAlpha(this.state.style.opacity)
         }
+        this.canvas.save()
         this.stateStack.addLast(this.state)
         this.state = RendererState(this.state)
+        if (let Some(maskPath) <- simpleMaskPath) {
+            // A white geometry-only mask is equivalent to a clip. Avoid the raster mask
+            // path because it reads the whole canvas back and composites the wrong contents.
+            this.canvas.clipPath(maskPath)
+            this.state.style.mask = ""
+        }
         if (this.state.style.mask != "") {
             let ref: ?SvgObject = this.document().resolveIRI(this.state.style.mask)
             if (let Some(v) <- ref) {
@@ -629,6 +719,62 @@ public class SVGRenderer {
             }
         }
         return true
+    }
+
+    private func simpleOpaqueMaskPath(mask: Mask): ?Path2D {
+        if (mask.children.size != 1) {
+            return None
+        }
+        if (let Some(userUnits) <- mask.maskContentUnitsAreUser) {
+            if (!userUnits) {
+                return None
+            }
+        }
+        let child: SvgObject = mask.children[0]
+        if (let Some(use) <- (child as Use)) {
+            if (use.transform.isSome() || !use.x.isZero() || !use.y.isZero() ||
+                !use.width.isZero() || !use.height.isZero()) {
+                return None
+            }
+            let ref: ?SvgObject = use.document().resolveIRI(use.href)
+            if (ref.isNone() || !(ref() is Path2)) {
+                return None
+            }
+            let path2: Path2 = (ref() as Path2)()
+            if (path2.transform.isSome() || path2.d.isNone()) {
+                return None
+            }
+            let state: RendererState = findInheritFromAncestorState(use)
+            updateStyleForElement(state, path2)
+            if (!isOpaqueWhiteMaskState(state)) {
+                return None
+            }
+            return Path2D(path2.d().d)
+        }
+        if (let Some(path2) <- (child as Path2)) {
+            if (path2.transform.isSome() || path2.d.isNone()) {
+                return None
+            }
+            let state: RendererState = findInheritFromAncestorState(path2)
+            if (!isOpaqueWhiteMaskState(state)) {
+                return None
+            }
+            return Path2D(path2.d().d)
+        }
+        return None
+    }
+
+    private func isOpaqueWhiteMaskState(state: RendererState): Bool {
+        if (!state.style.display || !state.style.visibility || state.hasStroke ||
+            state.style.fillOpacity != 1.0 || state.style.opacity != 1.0 || !state.hasFill) {
+            return false
+        }
+        if (let Some(v) <- state.style.fill) {
+            if (let Some(colour) <- (v as Colour)) {
+                return colour.colour.toUInt32() == 0xFFFFFFFFu32
+            }
+        }
+        return false
     }
 
     private func requiresCompositing(): Bool {
@@ -711,50 +857,121 @@ public class SVGRenderer {
 
     private func popLayer(obj: SvgElement, context: ?AbilityContext, originalObjBBox!: Box = obj.boundingBox): Unit {
         if (this.state.style.mask != "") {
-            this.canvas.getContext().globalCompositeOperation(CompositeOperation.DestinationIn)
             let ref: ?SvgObject = this.document().resolveIRI(this.state.style.mask)
+            var maskRef: ?Mask = None
             if (let Some(v) <- ref) {
-                if (let Some(ref) <- (v as Mask)) {
-                    renderMask(ref, obj, context, originalObjBBox: originalObjBBox)
+                if (let Some(m) <- (v as Mask)) {
+                    maskRef = m
                 }
             }
-            // The retore composites the luminanceToAlpha layer with the masks alpha
-            this.canvas.restore()
-
-            // Apply the final mask to the original object waiting in the open layer created in pushLayer()
-            this.canvas.restore()
+            if (let Some(m) <- maskRef) {
+                let bbox: Box = originalObjBBox
+                let mw: Float64 = max(1.0, ceil(bbox.width))
+                let mh: Float64 = max(1.0, ceil(bbox.height))
+                // The mask must be rendered into an isolated layer: luminance has to be read
+                // back from real pixels, and destination-in cannot be mixed with the object.
+                let offSettings: RenderingContextSettings = RenderingContextSettings(antialias: true)
+                let offCtx: OffscreenCanvasRenderingContext2D =
+                    OffscreenCanvasRenderingContext2D(mw, mh, offSettings, unit: LengthMetricsUnit.DEFAULT)
+                var imgData: ?ImageData = None
+                // Render the mask in the object's local coordinate space. The translation
+                // above maps bbox.min to the offscreen origin before compositing it back.
+                let offCanvas: CanvasImpl = CanvasImpl(CanvasRenderingContext2D(offSettings))
+                offCanvas.setOffScreenCanvas(offCtx, mw, mh)
+                let savedCanvas: CanvasImpl = this.canvas
+                this.canvas = offCanvas
+                try {
+                    this.canvas.translate(-bbox.minX, -bbox.minY, Paint(Option<Paint>.None))
+                    renderMask(m, obj, context, originalObjBBox: bbox)
+                    imgData = Some(offCtx.getImageData(0.0, 0.0, mw, mh))
+                } finally {
+                    this.canvas = savedCanvas
+                    offCanvas.clearOffScreenCanvas()
+                }
+                if (let Some(data) <- imgData) {
+                    let px: Array<UInt8> = data.data
+                    var i: Int64 = 0
+                    while (i < px.size) {
+                        let lum: Float64 = SVGRenderer.LUMINANCE_TO_ALPHA_RED * Float64(px[i]) +
+                            SVGRenderer.LUMINANCE_TO_ALPHA_GREEN * Float64(px[i + 1]) +
+                            SVGRenderer.LUMINANCE_TO_ALPHA_BLUE * Float64(px[i + 2])
+                        let a: Float64 = Float64(px[i + 3]) / 255.0
+                        let alpha: Float64 = min(255.0, max(0.0, round(lum * a)))
+                        px[i + 3] = UInt8(Int64(alpha))
+                        px[i] = 0
+                        px[i + 1] = 0
+                        px[i + 2] = 0
+                        i += 4
+                    }
+                    offCtx.putImageData(data, 0.0, 0.0)
+                    // One pixel of slack avoids clip anti-aliasing leaving a halo around the mask.
+                    this.canvas.save()
+                    this.canvas.clipRect(bbox.minX - 1.0, bbox.minY - 1.0, bbox.minX + bbox.width + 1.0,
+                        bbox.minY + bbox.height + 1.0)
+                    this.canvas.setGlobalCompositeOperation(CompositeOperation.DestinationIn)
+                    let maskPixelMap: PixelMap = offCtx.getPixelMap(0.0, 0.0, mw, mh)
+                    this.canvas.drawImage(maskPixelMap, bbox.minX, bbox.minY, bbox.width, bbox.height)
+                    this.canvas.restore()
+                }
+            } else {
+                this.state.style.mask = ""
+            }
         }
         statePop()
-        this.canvas.restore()
     }
 
     private func renderMask(mask: Mask, obj: SvgElement, context: ?AbilityContext,
         originalObjBBox!: Box = Box(0.0, 0.0, 200.0, 200.0)): Unit {
         let maskUnitsAreUser: Bool = mask.maskUnitsAreUser
+        // mask 区域默认值按 spec 外扩 10%:userSpaceOnUse 时 x/y=-10%、w/h=120%
+        var maskX: Float64 = 0.0
+        var maskY: Float64 = 0.0
         var w: Float64 = 0.0
         var h: Float64 = 0.0
         if (maskUnitsAreUser) {
-            w = if (!mask.width.isZero()) {
+            maskX = if (mask.x.isSet()) {
+                mask.x.floatValueX(this)
+            } else {
+                originalObjBBox.minX - 0.1 * originalObjBBox.width
+            }
+            maskY = if (mask.y.isSet()) {
+                mask.y.floatValueY(this)
+            } else {
+                originalObjBBox.minY - 0.1 * originalObjBBox.height
+            }
+            w = if (mask.width.isSet()) {
                 mask.width.floatValueX(this)
             } else {
-                originalObjBBox.width
+                1.2 * originalObjBBox.width
             }
-            h = if (!mask.height.isZero()) {
-                mask.width.floatValueY(this)
+            h = if (mask.height.isSet()) {
+                mask.height.floatValueY(this)
             } else {
-                originalObjBBox.height
+                1.2 * originalObjBBox.height
             }
         } else {
-            w = if (!mask.width.isZero()) {
+            maskX = if (mask.x.isSet()) {
+                mask.x.floatValue(this, max: 1.0)
+            } else {
+                -0.1
+            }
+            maskY = if (mask.y.isSet()) {
+                mask.y.floatValue(this, max: 1.0)
+            } else {
+                -0.1
+            }
+            w = if (mask.width.isSet()) {
                 mask.width.floatValue(this, max: 1.0)
             } else {
                 1.2
             }
-            h = if (!mask.height.isZero()) {
+            h = if (mask.height.isSet()) {
                 mask.height.floatValue(this, max: 1.0)
             } else {
                 1.2
             }
+            maskX = originalObjBBox.minX + maskX * originalObjBBox.width
+            maskY = originalObjBBox.minY + maskY * originalObjBBox.height
             w *= originalObjBBox.width
             h *= originalObjBBox.height
         }
@@ -763,20 +980,24 @@ public class SVGRenderer {
         }
         statePush()
         this.state = findInheritFromAncestorState(mask)
+        this.state.style.mask = ""
         this.state.style.opacity = 1.0
         let compositing: Bool = pushLayer()
         this.canvas.save()
+        this.canvas.clipRect(maskX, maskY, maskX + w, maskY + h)
         let maskContentUnitsAreUser: Bool = if (mask.maskContentUnitsAreUser.isNone()) {
             true
         } else {
             mask.maskContentUnitsAreUser()
         }
         if (!maskContentUnitsAreUser) {
+            this.state.inObjectBoundingBox = true
             this.canvas.translate(originalObjBBox.minX, originalObjBBox.minY, Paint(Option<Paint>.None))
             this.canvas.scale(originalObjBBox.width, originalObjBBox.height, Paint(Option<Paint>.None))
         }
         renderChildren(mask, false, context)
         this.canvas.restore()
+        this.state.inObjectBoundingBox = false
         if (compositing) {
             popLayer(obj, context, originalObjBBox: originalObjBBox)
         }
@@ -831,12 +1052,12 @@ public class SVGRenderer {
         checkForClipPath(obj)
         let compositing: Bool = pushLayer()
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         if (this.state.hasFill) {
             doFilledPath(obj, path, context)
-            renderMarkers(obj, context)
         }
+        renderMarkers(obj, context)
         if (compositing) {
             popLayer(obj, context)
         }
@@ -854,7 +1075,7 @@ public class SVGRenderer {
         }
         if (let Some(j) <- this.state.style.stroke) {
             if (j is PaintReference) {
-                decodePaintReference(true, obj.boundingBox, (j as PaintReference).getOrThrow())
+                decodePaintReference(false, obj.boundingBox, (j as PaintReference).getOrThrow())
             }
         }
     }
@@ -898,19 +1119,31 @@ public class SVGRenderer {
         var _y2: Float64
         if (userUnits) {
             let viewPortUser: Box = getCurrentViewPortInUserUnits()
-            _x1 = gradient.x1.floatValueX(this)
-            _y1 = gradient.y1.floatValueY(this)
-            _x2 = if (!gradient.x2.isZero()) {
+            _x1 = if (gradient.x1.isSet()) {
+                gradient.x1.floatValueX(this)
+            } else {
+                0.0
+            }
+            _y1 = if (gradient.y1.isSet()) {
+                gradient.y1.floatValueY(this)
+            } else {
+                0.0
+            }
+            _x2 = if (gradient.x2.isSet()) {
                 gradient.x2.floatValueX(this)
             } else {
                 viewPortUser.width
             }
-            _y2 = gradient.y2.floatValueY(this)
+            _y2 = if (gradient.y2.isSet()) {
+                gradient.y2.floatValueY(this)
+            } else {
+                0.0
+            }
         } else {
-            _x1 = gradient.x1.floatValue(this, max: 1.0)
-            _y1 = gradient.y1.floatValue(this, max: 1.0)
-            _x2 = gradient.x2.floatValue(this, max: 1.0)
-            _y2 = gradient.y2.floatValue(this, max: 1.0)
+            _x1 = bboxFraction(gradient.x1, 0.0)
+            _y1 = bboxFraction(gradient.y1, 0.0)
+            _x2 = bboxFraction(gradient.x2, 1.0)
+            _y2 = bboxFraction(gradient.y2, 0.0)
         }
         statePush()
         this.state = findInheritFromAncestorState(gradient)
@@ -933,16 +1166,12 @@ public class SVGRenderer {
             return
         }
         let colours: ArrayList<Color> = ArrayList<Color>(numStops)
-        let positions: ArrayList<Int64> = ArrayList<Int64>(numStops)
-        var lastOffset: Int64 = -1
+        let positions: ArrayList<Float64> = ArrayList<Float64>(numStops)
+        var lastOffset: Float64 = -1.0
         var i: Int64 = 0
         for (j in 0..gradient.children.size) {
             let stop: Stop = (gradient.children[j] as Stop)()
-            let offset: Int64 = if (stop.offset != 0) {
-                stop.offset
-            } else {
-                0
-            }
+            let offset: Float64 = stop.offset
             if (i == 0 || offset >= lastOffset) {
                 positions.add(offset, at: i)
                 lastOffset = offset
@@ -956,7 +1185,7 @@ public class SVGRenderer {
             } else {
                 Colour.BLACK
             }
-            colours.add(col.colour, at: i)
+            colours.add(getRgbaColor(col.colour, this.state.style.stopOpacity), at: i)
             i++
             statePop()
         }
@@ -966,13 +1195,24 @@ public class SVGRenderer {
             return
         }
         statePop()
-        let gr: CanvasGradient = this.canvas.getContext().createLinearGradient(_x1, _y1, _x2, _y2)
+        if (!userUnits && boundingBox != Box(0.0, 0.0, 0.0, 0.0)) {
+            _x1 = boundingBox.minX + _x1 * boundingBox.width
+            _y1 = boundingBox.minY + _y1 * boundingBox.height
+            _x2 = boundingBox.minX + _x2 * boundingBox.width
+            _y2 = boundingBox.minY + _y2 * boundingBox.height
+        }
+        let gr: CanvasGradient = this.canvas.createLinearGradient(_x1, _y1, _x2, _y2)
         for (i in 0..positions.size) {
             gr.addColorStop(positions[i], colours[i])
         }
-        this.state.fillPaint.setGradient(gr)
-        this.canvas.getContext().globalAlpha(this.state.style.fillOpacity)
-        paint.setAlpha(SVGRenderer.clamp255(this.state.style.fillOpacity))
+        paint.setGradient(gr)
+        let opacity: Float64 = if (isFill) {
+            this.state.style.fillOpacity
+        } else {
+            this.state.style.strokeOpacity
+        }
+        this.canvas.setGlobalAlpha(opacity)
+        paint.setAlpha(SVGRenderer.clamp255(opacity))
     }
 
     private func fillInChainedGradientFields(gradient: GradientElement, href: String): Unit {
@@ -982,13 +1222,13 @@ public class SVGRenderer {
                 return
             }
             let grRef = (ref as GradientElement)()
-            if (gradient.gradientUnitsAreUser == false) {
+            if (!gradient.gradientUnitsAreUserSet) {
                 gradient.gradientUnitsAreUser = grRef.gradientUnitsAreUser
             }
             if (gradient.gradientTransform.isNone()) {
                 gradient.gradientTransform = grRef.gradientTransform
             }
-            if (gradient.spreadMethod == GradientSpread()) {
+            if (!gradient.spreadMethodSet) {
                 gradient.spreadMethod = grRef.spreadMethod
             }
             if (gradient.children.size == 0) {
@@ -1011,34 +1251,34 @@ public class SVGRenderer {
     }
 
     private func fillInChainedGradientFields2(gradient: SvgLinearGradient, grRef: SvgLinearGradient): Unit {
-        if (gradient.x1.isZero()) {
+        if (!gradient.x1.isSet()) {
             gradient.x1 = grRef.x1
         }
-        if (gradient.y1.isZero()) {
+        if (!gradient.y1.isSet()) {
             gradient.y1 = grRef.y1
         }
-        if (gradient.x2.isZero()) {
+        if (!gradient.x2.isSet()) {
             gradient.x2 = grRef.x2
         }
-        if (gradient.y2.isZero()) {
+        if (!gradient.y2.isSet()) {
             gradient.y2 = grRef.y2
         }
     }
 
     private func fillInChainedGradientFields3(gradient: SvgRadialGradient, grRef: SvgRadialGradient): Unit {
-        if (gradient.cx.isZero()) {
+        if (!gradient.cx.isSet()) {
             gradient.cx = grRef.cx
         }
-        if (gradient.cy.isZero()) {
+        if (!gradient.cy.isSet()) {
             gradient.cy = grRef.cy
         }
-        if (gradient.r.isZero()) {
+        if (!gradient.r.isSet()) {
             gradient.r = grRef.r
         }
-        if (gradient.fx.isZero()) {
+        if (!gradient.fx.isSet()) {
             gradient.fx = grRef.fx
         }
-        if (gradient.fy.isZero()) {
+        if (!gradient.fy.isSet()) {
             gradient.fy = grRef.fy
         }
     }
@@ -1050,6 +1290,31 @@ public class SVGRenderer {
         } else {
             min(i, 255.0)
         }
+    }
+
+    // ArkTS SVGRenderer.bboxFraction: objectBoundingBox 坐标归一化为 0..1
+    private func bboxFraction(len: SVGLength, defaultVal: Float64): Float64 {
+        if (!len.isSet()) {
+            return defaultVal
+        }
+        if (len.uni == Units.percent) {
+            return len.value / 100.0
+        }
+        if (len.uni == Units.px) {
+            return len.value
+        }
+        return len.floatValueX(this)
+    }
+
+    // ArkTS SVGRenderer.getRgbaColor: 将颜色与该 stop 的 stopOpacity 组合
+    private func getRgbaColor(color: Color, opacity: Float64): Color {
+        let op: Float64 = max(opacity, 0.0)
+        let clamped: Float64 = min(op, 1.0)
+        let argb: UInt32 = color.toUInt32()
+        let baseAlpha: Float64 = Float64((argb >> 24) & 0xFFu32) / 255.0
+        let effective: Float64 = clamped * baseAlpha
+        let alpha: UInt32 = UInt32(effective * 255.0 + 0.5)
+        return Color((alpha << 24) | (argb & 0x00FFFFFFu32))
     }
 
     private func makeRadialGradient(isFill: Bool, boundingBox: Box, gradient: SvgRadialGradient): Unit {
@@ -1069,37 +1334,25 @@ public class SVGRenderer {
         var _fy: Float64
         if (userUnits) {
             let fiftyPercent: SVGLength = SVGLength(50.0, u: Units.percent)
-            _cx = if (!gradient.cx.isZero()) {
+            _cx = if (gradient.cx.isSet()) {
                 gradient.cx.floatValueX(this)
             } else {
                 fiftyPercent.floatValueX(this)
             }
-            _cy = if (!gradient.cy.isZero()) {
+            _cy = if (gradient.cy.isSet()) {
                 gradient.cy.floatValueY(this)
             } else {
                 fiftyPercent.floatValueY(this)
             }
-            _r = if (!gradient.r.isZero()) {
+            _r = if (gradient.r.isSet()) {
                 gradient.r.floatValue(this)
             } else {
                 fiftyPercent.floatValue(this)
             }
         } else {
-            _cx = if (!gradient.cx.isZero()) {
-                gradient.cx.floatValue(this, max: 1.0)
-            } else {
-                0.5
-            }
-            _cy = if (!gradient.cy.isZero()) {
-                gradient.cy.floatValue(this, max: 1.0)
-            } else {
-                0.5
-            }
-            _r = if (!gradient.r.isZero()) {
-                gradient.r.floatValue(this, max: 1.0)
-            } else {
-                0.5
-            }
+            _cx = bboxFraction(gradient.cx, 0.5)
+            _cy = bboxFraction(gradient.cy, 0.5)
+            _r = bboxFraction(gradient.r, 0.5)
         }
         statePush()
         this.state = findInheritFromAncestorState(gradient)
@@ -1122,17 +1375,13 @@ public class SVGRenderer {
             return
         }
         let colours: ArrayList<Color> = ArrayList<Color>(numStops)
-        let positions: ArrayList<Int64> = ArrayList<Int64>(numStops)
+        let positions: ArrayList<Float64> = ArrayList<Float64>(numStops)
         var i: Int64 = 0
-        var lastOffset: Int64 = -1
+        var lastOffset: Float64 = -1.0
         for (j in 0..gradient.children.size) {
             let child = gradient.children[j]
             let stop = (child as Stop)()
-            let offset = if (stop.offset != 0) {
-                stop.offset
-            } else {
-                0
-            }
+            let offset = stop.offset
             if (i == 0 || offset >= lastOffset) {
                 positions.add(offset, at: i)
                 lastOffset = offset
@@ -1145,7 +1394,7 @@ public class SVGRenderer {
             if (col.isNone()) {
                 col = Colour.BLACK
             }
-            colours.add(col().colour, at: i)
+            colours.add(getRgbaColor(col().colour, this.state.style.stopOpacity), at: i)
             i++
             statePop()
         }
@@ -1155,13 +1404,26 @@ public class SVGRenderer {
             return
         }
         statePop()
-        let gr: CanvasGradient = this.canvas.getContext().createRadialGradient(_cx, _cy, _r, 0.0, 0.0, 0.0)
+        let gr: CanvasGradient = this.canvas.createRadialGradient(_cx, _cy, 0.0, _cx, _cy, _r)
         for (i in 0..positions.size) {
             gr.addColorStop(positions[i], colours[i])
         }
-        this.state.fillPaint.setGradient(gr)
-        this.canvas.getContext().globalAlpha(this.state.style.fillOpacity)
-        paint.setAlpha(SVGRenderer.clamp255(this.state.style.fillOpacity))
+        paint.setGradient(gr)
+        if (!userUnits && boundingBox != Box(0.0, 0.0, 0.0, 0.0)) {
+            let bbox: ArrayList<Float64> = ArrayList<Float64>()
+            bbox.add(boundingBox.minX)
+            bbox.add(boundingBox.minY)
+            bbox.add(boundingBox.width)
+            bbox.add(boundingBox.height)
+            paint.setRadialBBox(bbox)
+        }
+        let opacity: Float64 = if (isFill) {
+            this.state.style.fillOpacity
+        } else {
+            this.state.style.strokeOpacity
+        }
+        this.canvas.setGlobalAlpha(opacity)
+        paint.setAlpha(SVGRenderer.clamp255(opacity))
     }
 
     private func setSolidColor(isFill: Bool, ref: SolidColor): Unit {
@@ -1188,7 +1450,7 @@ public class SVGRenderer {
             }
             if (isSpecified(ref.baseStyle, Style.SPECIFIED_SOLID_COLOR | Style.SPECIFIED_SOLID_OPACITY)) {
                 if (let Some(v) <- this.state.style.stroke) {
-                    setPaintColour(this.state, isFill, v)
+                    setPaintColour(this.state, false, v)
                 }
             }
         }
@@ -1205,20 +1467,26 @@ public class SVGRenderer {
         if (this.state.style.markerStart != "") {
             let ref: ?SvgObject = obj.document().resolveIRI(this.state.style.markerStart)
             if (let Some(v) <- ref) {
-                _markerStart = v as Marker
+                if (let Some(marker) <- (v as Marker)) {
+                    _markerStart = marker
+                }
             }
         }
         if (this.state.style.markerMid != "") {
             let ref: ?SvgObject = obj.document().resolveIRI(this.state.style.markerMid)
             if (let Some(v) <- ref) {
-                _markerMid = v as Marker
+                if (let Some(marker) <- (v as Marker)) {
+                    _markerMid = marker
+                }
             }
         }
 
         if (this.state.style.markerEnd != "") {
             let ref: ?SvgObject = obj.document().resolveIRI(this.state.style.markerEnd)
             if (let Some(v) <- ref) {
-                _markerEnd = v as Marker
+                if (let Some(marker) <- (v as Marker)) {
+                    _markerEnd = marker
+                }
             }
         }
         var markers: ArrayList<MarkerVector>
@@ -1239,7 +1507,7 @@ public class SVGRenderer {
         this.state.style.markerMid = ""
         this.state.style.markerEnd = ""
         if (let Some(v) <- _markerStart) {
-            renderMarker(v, markers[0], context)
+            renderMarker(v, markers[0], context, isStart: true)
         }
         if (_markerMid.isSome() && markers.size > 2) {
             var lastPos: MarkerVector = markers[0]
@@ -1274,21 +1542,28 @@ public class SVGRenderer {
                 }
             }
         }
+        this.state.fillPaint.setStroke(false)
         this.canvas.drawPath(path, this.state.fillPaint)
     }
 
-    private func fillWithPattern(obj: SvgElement, path: Path2D, pattern: Pattern, context: ?AbilityContext): Unit {
-        let patternUnitsAreUser: Bool = pattern.patternUnitsAreUser
+    private func fillWithPattern(obj: SvgElement, path: Path2D, pattern: Pattern, context: ?AbilityContext,
+        patternArea!: ?Box = None, originArea!: ?Box = None, clipToPath!: Bool = true,
+        opacity!: Float64 = -1.0): Unit {
         var x: Float64 = 0.0
         var y: Float64 = 0.0
         var w: Float64 = 0.0
         var h: Float64 = 0.0
         var originX: Float64 = 0.0
         var originY: Float64 = 0.0
-        let objFillOpacity: Float64 = this.state.style.fillOpacity
+        let objFillOpacity: Float64 = if (opacity >= 0.0) {
+            opacity
+        } else {
+            this.state.style.fillOpacity
+        }
         if (pattern.href != "") {
             fillInChainedPatternFields(pattern, pattern.href)
         }
+        let patternUnitsAreUser: Bool = pattern.patternUnitsAreUser
         if (patternUnitsAreUser) {
             x = pattern.x.floatValueX(this)
             y = pattern.y.floatValueY(this)
@@ -1313,19 +1588,30 @@ public class SVGRenderer {
             PreserveAspectRatio.LETTERBOX
         }
         statePush()
-        this.canvas.clipPath(path)
+        if (clipToPath) {
+            this.canvas.clipPath(path)
+        }
         let baseState: RendererState = RendererState(Option<RendererState>.None)
         updateStyle(baseState, Style.getDefaultStyle())
         baseState.style.overflow = false
         this.state = findInheritFromAncestorState(pattern, n: baseState)
-        let patternArea: Box = obj.boundingBox
+        let resolvedPatternArea: Box = if (let Some(v) <- patternArea) {
+            v
+        } else {
+            obj.boundingBox
+        }
+        let resolvedOriginArea: Box = if (let Some(v) <- originArea) {
+            v
+        } else {
+            obj.boundingBox
+        }
         if (let Some(v) <- pattern.patternTransform) {
             this.canvas.concat(v)
         }
-        originX = x + round((patternArea.minX - x) / w) * w
-        originY = y + round((patternArea.minY - y) / h) * h
-        let right: Float64 = patternArea.maxX()
-        let bottom: Float64 = patternArea.maxY()
+        originX = x + round((resolvedOriginArea.minX - x) / w) * w
+        originY = y + round((resolvedOriginArea.minY - y) / h) * h
+        let right: Float64 = resolvedPatternArea.maxX()
+        let bottom: Float64 = resolvedPatternArea.maxY()
         let stepViewBox: Box = Box(0.0, 0.0, w, h)
         let compositing: Bool = pushLayer(o: objFillOpacity)
         var stepY: Float64 = originY
@@ -1370,25 +1656,25 @@ public class SVGRenderer {
                 return
             }
             let pRef: Pattern = (v as Pattern)()
-            if (pattern.patternUnitsAreUser == false) {
+            if (!pattern.patternUnitsAreUserSet) {
                 pattern.patternUnitsAreUser = pRef.patternUnitsAreUser
             }
-            if (pattern.patternContentUnitsAreUser == false) {
+            if (!pattern.patternContentUnitsAreUserSet) {
                 pattern.patternContentUnitsAreUser = pRef.patternContentUnitsAreUser
             }
             if (pattern.patternTransform.isNone()) {
                 pattern.patternTransform = pRef.patternTransform
             }
-            if (pattern.x.isZero()) {
+            if (!pattern.x.isSet()) {
                 pattern.x = pRef.x
             }
-            if (pattern.y.isZero()) {
+            if (!pattern.y.isSet()) {
                 pattern.y = pRef.y
             }
-            if (pattern.width.isZero()) {
+            if (!pattern.width.isSet()) {
                 pattern.width = pRef.width
             }
-            if (pattern.height.isZero()) {
+            if (!pattern.height.isSet()) {
                 pattern.height = pRef.height
             }
             if (pattern.children.size == 0) {
@@ -1408,7 +1694,15 @@ public class SVGRenderer {
         }
     }
 
-    private func doStroke(path: Path2D): Unit {
+    private func doStroke(path: Path2D, obj!: ?SvgElement = None, context!: ?AbilityContext = None): Unit {
+        this.state.strokePaint.setStroke(true)
+        if (let Some(element) <- obj) {
+            if (let Some(pattern) <- strokePattern()) {
+                if (strokeWithPattern(element, path, pattern, context)) {
+                    return
+                }
+            }
+        }
         if (this.state.style.vectorEffect == VectorEffect().NonScalingStroke) {
             let currentMatrix: Matrix2D2 = this.canvas.getMatrix()
             let transformedPath: Path2D = Path2D()
@@ -1418,6 +1712,67 @@ public class SVGRenderer {
         } else {
             this.canvas.drawPath(path, this.state.strokePaint)
         }
+    }
+
+    // 取当前描边引用指向的 pattern，非图案描边返回 None。
+    private func strokePattern(): ?Pattern {
+        if (let Some(v) <- this.state.style.stroke) {
+            if (v is PaintReference) {
+                let ref: ?SvgObject = this.document().resolveIRI((v as PaintReference)().href)
+                if (let Some(j) <- ref) {
+                    if (let Some(pattern) <- (j as Pattern)) {
+                        return pattern
+                    }
+                }
+            }
+        }
+        return None
+    }
+
+    // canvas 没有 pattern 描边 shader，这里先在离屏图层铺满图案，再用 destination-in 把
+    // 描边轮廓之外的部分裁掉，最后整体贴回主画布。返回 false 表示退化为普通描边。
+    private func strokeWithPattern(obj: SvgElement, path: Path2D, pattern: Pattern,
+        context: ?AbilityContext): Bool {
+        let bbox: Box = obj.boundingBox
+        let half: Float64 = max(this.state.strokePaint.getStrokeWidth(), 1.0)
+        let minX: Float64 = bbox.minX - half
+        let minY: Float64 = bbox.minY - half
+        let w: Float64 = bbox.width + half * 2.0
+        let h: Float64 = bbox.height + half * 2.0
+        if (w <= 0.0 || h <= 0.0 || w * h > 4000000.0) {
+            return false
+        }
+        let rasterW: Float64 = max(1.0, ceil(w))
+        let rasterH: Float64 = max(1.0, ceil(h))
+        let settings: RenderingContextSettings = RenderingContextSettings(antialias: true)
+        let offCtx: OffscreenCanvasRenderingContext2D =
+            OffscreenCanvasRenderingContext2D(rasterW, rasterH, settings, unit: LengthMetricsUnit.DEFAULT)
+        let offCanvas: CanvasImpl = CanvasImpl(CanvasRenderingContext2D(settings))
+        offCanvas.setOffScreenCanvas(offCtx, rasterW, rasterH)
+        let savedCanvas: CanvasImpl = this.canvas
+        this.canvas = offCanvas
+        try {
+            this.canvas.translate(-minX, -minY, Paint(Option<Paint>.None))
+            this.canvas.save()
+            fillWithPattern(obj, path, pattern, context, clipToPath: false,
+                opacity: this.state.style.strokeOpacity)
+            this.canvas.restore()
+            this.canvas.save()
+            this.canvas.setGlobalCompositeOperation(CompositeOperation.DestinationIn)
+            let silhouette: Paint = Paint(this.state.strokePaint)
+            silhouette.setStroke(true)
+            silhouette.setAlpha(1.0)
+            this.canvas.drawPath(path, silhouette)
+            this.canvas.restore()
+        } finally {
+            this.canvas = savedCanvas
+        }
+        let layer: PixelMap = offCtx.getPixelMap(0.0, 0.0, rasterW, rasterH)
+        this.canvas.save()
+        this.canvas.drawImage(layer, minX, minY, w, h)
+        this.canvas.restore()
+        offCanvas.clearOffScreenCanvas()
+        return true
     }
 
     private func renderRect(obj: Rect2, context: ?AbilityContext): Unit {
@@ -1434,6 +1789,7 @@ public class SVGRenderer {
         if (let Some(v) <- obj.transform) {
             this.canvas.concat(v)
         }
+        var path: Path2D = makePathAndBoundingBoxRect(obj)
         checkForGradientsAndPatterns(obj)
         checkForClipPath(obj)
         if (this.combinedPath.isSome()) {
@@ -1441,14 +1797,15 @@ public class SVGRenderer {
             obj.y = SVGLength()
             obj.width = SVGLength(2000.0)
             obj.height = SVGLength(2000.0)
+            obj.boundingBox = Box(0.0, 0.0, 0.0, 0.0)
+            path = makePathAndBoundingBoxRect(obj)
         }
-        let path: Path2D = makePathAndBoundingBoxRect(obj)
         let compositing: Bool = pushLayer()
         if (this.state.hasFill) {
             doFilledPath(obj, path, context)
         }
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         if (compositing) {
             popLayer(obj, context)
@@ -1477,7 +1834,7 @@ public class SVGRenderer {
             doFilledPath(obj, path, context)
         }
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         if (compositing) {
             popLayer(obj, context)
@@ -1506,7 +1863,7 @@ public class SVGRenderer {
             doFilledPath(obj, path, context)
         }
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         if (compositing) {
             popLayer(obj, context)
@@ -1531,7 +1888,7 @@ public class SVGRenderer {
         checkForGradientsAndPatterns(obj)
         checkForClipPath(obj)
         let compositing: Bool = pushLayer()
-        doStroke(path)
+        doStroke(path, obj: obj, context: context)
         renderMarkers(obj, context)
         if (compositing) {
             popLayer(obj, context)
@@ -1578,7 +1935,7 @@ public class SVGRenderer {
         let y1 = if (obj.y1.isZero()) {
             0.0
         } else {
-            obj.y1.floatValueX(this)
+            obj.y1.floatValueY(this)
         }
         let x2 = if (obj.x2.isZero()) {
             0.0
@@ -1588,7 +1945,7 @@ public class SVGRenderer {
         let y2 = if (obj.y2.isZero()) {
             0.0
         } else {
-            obj.y2.floatValueX(this)
+            obj.y2.floatValueY(this)
         }
         if (obj.boundingBox == Box(0.0, 0.0, 0.0, 0.0)) {
             obj.boundingBox = Box(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
@@ -1629,7 +1986,7 @@ public class SVGRenderer {
             doFilledPath(obj, path, context)
         }
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         renderMarkers(obj, context)
         if (compositing) {
@@ -1705,7 +2062,7 @@ public class SVGRenderer {
             doFilledPath(obj, path, context)
         }
         if (this.state.hasStroke) {
-            doStroke(path)
+            doStroke(path, obj: obj, context: context)
         }
         renderMarkers(obj, context)
         if (compositing) {
@@ -1746,12 +2103,46 @@ public class SVGRenderer {
         }
         checkForGradientsAndPatterns(obj)
         checkForClipPath(obj)
+        let textAnchor: String = getAnchorPosition()
+        let textWidth: Float64 = calculateTextWidth(obj)
+        var anchorXOffset: Float64 = 0.0
+        if (textAnchor == "middle") {
+            anchorXOffset = textWidth / -2.0
+        } else if (textAnchor == "end") {
+            anchorXOffset = -textWidth
+        }
         let compositing: Bool = pushLayer()
-        let textAnchor: String = state.style.textAnchor.toAsciiLower()
-        enumerateTextSpans(obj, PlainTextDrawer(x, y, dx, dy, textAnchor), context)
+        let textDrawer: PlainTextDrawer = PlainTextDrawer(x + dx + anchorXOffset, y + dy)
+        enumerateTextSpans(obj, textDrawer, context)
+        if (obj.boundingBox == Box(0.0, 0.0, 0.0, 0.0)) {
+            if (let Some(textBBox) <- textDrawer.getTextBoundingBox()) {
+                obj.boundingBox = textBBox
+            }
+        }
         if (compositing) {
             popLayer(obj, context)
         }
+    }
+
+    private func getAnchorPosition(): String {
+        let textAnchor: String = state.style.textAnchor.toAsciiLower()
+        let direction: String = state.style.direction.toAsciiLower()
+        let result: String = if (direction == "ltr" || textAnchor == "middle") {
+            textAnchor
+        } else {
+            if (textAnchor == "start") {
+                "end"
+            } else {
+                "start"
+            }
+        }
+        return result
+    }
+
+    private func calculateTextWidth(obj: TextContainer): Float64 {
+        let measurer: TextWidthMeasurer = TextWidthMeasurer()
+        enumerateTextSpans(obj, measurer, Option<AbilityContext>.None)
+        return measurer.width
     }
 
     private func processTextChild(obj: SvgObject, textprocessor: TextProcessor, context: ?AbilityContext): Unit {
@@ -1766,12 +2157,21 @@ public class SVGRenderer {
             let tspan = span
             updateStyleForElement(this.state, tspan)
             if (display()) {
-                var x: Float64 = 0.0
-                var y: Float64 = 0.0
-                var dx: Float64 = 0.0
-                var dy: Float64 = 0.0
-                let specifiedX: Bool = (!tspan.x.isEmpty() && tspan.x.size > 0)
-                if (specifiedX) {
+                if (!tspan.x.isEmpty() && tspan.x.size > 0) {
+                    let value = tspan.x[0].floatValueX(this)
+                    textprocessor.setTextX(value)
+                }
+                if (!tspan.y.isEmpty() && tspan.y.size > 0) {
+                    let value = tspan.y[0].floatValueY(this)
+                    textprocessor.setTextY(value)
+                }
+                if (!tspan.dx.isEmpty() && tspan.dx.size > 0) {
+                    let value = tspan.dx[0].floatValueX(this)
+                    textprocessor.offsetText(value, 0.0)
+                }
+                if (!tspan.dy.isEmpty() && tspan.dy.size > 0) {
+                    let value = tspan.dy[0].floatValueY(this)
+                    textprocessor.offsetText(0.0, value)
                 }
                 checkForGradientsAndPatterns((tspan.getTextRoot() as SvgElement)())
                 let compositing: Bool = pushLayer()
@@ -1790,10 +2190,9 @@ public class SVGRenderer {
                 let ref: ?SvgObject = obj.document().resolveIRI(tref.href)
                 if (let Some(v) <- ref) {
                     if (let Some(ref) <- (v as TextContainer)) {
-                        let str: String = ""
-                        extractRawText(ref, str)
+                        let str: String = extractRawText(ref)
                         if (str.size > 0) {
-                            textprocessor.processText(str.toString(), this.state, this.canvas)
+                            textprocessor.processText(str, this.state, this.canvas)
                         }
                     }
                 } else {}
@@ -1807,18 +2206,19 @@ public class SVGRenderer {
         }
     }
 
-    private func extractRawText(parent: TextContainer, s: String): Unit {
-        var str: String = s
+    private func extractRawText(parent: TextContainer): String {
+        var str: String = ""
         var isFirstChild: Bool = true
         for (i in 0..parent.children.size) {
             let child: SvgObject = parent.children[i]
             if (let Some(container) <- (child as TextContainer)) {
-                extractRawText(container, str)
+                str += extractRawText(container)
             } else if (let Some(sequence) <- (child as TextSequence)) {
-                str += (textXMLSpaceTransform(sequence.text, isFirstChild, i + 1 != parent.children.size))
+                str += (textXMLSpaceTransform(sequence.text, isFirstChild, i + 1 == parent.children.size))
             }
             isFirstChild = false
         }
+        return str
     }
 
     public static func arcTo(lastX: Float64, lastY: Float64, rX: Float64, rY: Float64, angle: Float64,
@@ -1834,7 +2234,7 @@ public class SVGRenderer {
         }
         rx = abs(rx)
         ry = abs(ry)
-        let angleRad: Float64 = Float64(Int64(angle) % 360) * Float64.PI / 180.0
+        let angleRad: Float64 = Float64(Int64(angle) % 360) * Float64.getPI() / 180.0
         let cosAngle: Float64 = cos(angleRad)
         let sinAngle: Float64 = sin(angleRad)
         let dx2: Float64 = Float64(lastX - x) / 2.0
@@ -1877,7 +2277,7 @@ public class SVGRenderer {
         let vy: Float64 = (-y1 - cy1) / ry
         var p: Float64
         var n: Float64
-        let TWO_PI: Float64 = Float64.PI * 2.0
+        let TWO_PI: Float64 = Float64.getPI() * 2.0
         n = sqrt((ux * ux) + (uy * uy))
         p = ux
         sign = if (uy < 0.0) {
@@ -1921,7 +2321,7 @@ public class SVGRenderer {
 
     private static func checkedArcCos(val: Float64): Float64 {
         return if (val < -1.0) {
-            Float64.PI
+            Float64.getPI()
         } else {
             if (val > 1.0) {
                 0.0
@@ -1932,7 +2332,7 @@ public class SVGRenderer {
     }
 
     private static func arcToBeziers(angleStart: Float64, angleExtent: Float64): ArrayList<Float64> {
-        let numSegments: Float64 = ceil(abs(angleExtent) * 2.0 / Float64.PI)
+        let numSegments: Float64 = ceil(abs(angleExtent) * 2.0 / Float64.getPI())
         let angleIncrement: Float64 = angleExtent / numSegments
         let controlLength: Float64 = 4.0 / 3.0 * sin(angleIncrement / 2.0) / (1.0 + cos(angleIncrement / 2.0))
         let coords: ArrayList<Float64> = ArrayList<Float64>(Int64(numSegments) * 6)
@@ -1969,9 +2369,9 @@ public class SVGRenderer {
             for (i in 0..obj.children.size) {
                 let child: SvgObject = obj.children[i]
                 if (child is TextSequence) {
-                    textprocessor.processText(
-                        textXMLSpaceTransform((child as TextSequence)().text, isFirstChild, i + 1 != obj.children.size),
-                        this.state, this.canvas)
+                    let sequence = (child as TextSequence)()
+                    let transformed = textXMLSpaceTransform(sequence.text, isFirstChild, i + 1 == obj.children.size)
+                    textprocessor.processText(transformed, this.state, this.canvas)
                 } else {
                     processTextChild(child, textprocessor, context)
                 }
@@ -2064,39 +2464,56 @@ public class SVGRenderer {
         if (obj.href == "") {
             return
         }
-        let translateX = if (!obj.translateX.isZero()) {
-            obj.translateX.floatValueX(this)
-        } else {
-            0.0
-        }
-        let translateY = if (!obj.translateY.isZero()) {
-            obj.translateY.floatValueY(this)
-        } else {
-            0.0
-        }
         let positioning: PreserveAspectRatio = if (let Some(v) <- obj.preserveAspectRatio) {
             v
         } else {
             PreserveAspectRatio.LETTERBOX
         }
+        updateStyleForElement(this.state, obj)
+        if (!display() || !visible()) {
+            return
+        }
+        if (let Some(v) <- obj.transform) {
+            this.canvas.concat(v)
+        }
+        let _x: Float64 = obj.x.floatValueX(this)
+        let _y: Float64 = obj.y.floatValueY(this)
+        let _w: Float64 = obj.width.floatValue(this)
+        let _h: Float64 = obj.height.floatValue(this)
+        this.state.viewPort = Box(_x, _y, _w, _h)
+        if (!this.state.style.overflow) {
+            setClipRect(_x, _y, _w, _h)
+        }
+        obj.boundingBox = this.state.viewPort
+        checkForClipPath(obj, boundingBox: this.state.viewPort)
+        let compositing: Bool = pushLayer()
+        viewportFill()
+
+        var pixelMap: PixelMap
         let pic: String = checkForImageDataURL(obj.href)
         if (pic == "") {
             let resourceManager = ResourceManager.getResourceManager(getStageContext(context()))
             let arr: Array<UInt8> = resourceManager.getRawFileContent(obj.href)
-            let pixelMap: PixelMap = createImageSource(arr).createPixelMap()
-            this.canvas.getContext().drawImage(pixelMap, translateX, translateY, obj.width.floatValue(this),
-                obj.height.floatValue(this))
+            pixelMap = createImageSource(arr).createPixelMap()
         } else {
-            viewportFill()
             let array: Array<Byte> = fromBase64String(pic) ?? Array<Byte>(512, repeat: 0)
-            let pixelMap: PixelMap = createImageSource(String.fromUtf8(array)).createPixelMap()
-            if (!obj.x.isZero()) {
-                this.canvas.getContext().drawImage(pixelMap, obj.x.floatValueX(this), obj.y.floatValueY(this),
-                    obj.width.floatValue(this), obj.height.floatValue(this))
-            } else {
-                this.canvas.getContext().drawImage(pixelMap, 0.0, 0.0, obj.width.floatValue(this),
-                    obj.height.floatValue(this))
-            }
+            pixelMap = createImageSource(String.fromUtf8(array)).createPixelMap()
+        }
+
+        let imageInfo = pixelMap.getImageInfo()
+        let imageWidth: Float64 = Float64(imageInfo.size.width)
+        let imageHeight: Float64 = Float64(imageInfo.size.height)
+        this.canvas.save()
+        if (imageWidth <= 0.0 || imageHeight <= 0.0) {
+            this.canvas.drawImage(pixelMap, 0.0, 0.0, _w, _h)
+        } else {
+            let imageNaturalSize: Box = Box(0.0, 0.0, imageWidth, imageHeight)
+            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, imageNaturalSize, positioning))
+            this.canvas.drawImage(pixelMap, 0.0, 0.0, imageWidth, imageHeight)
+        }
+        this.canvas.restore()
+        if (compositing) {
+            popLayer(obj, context)
         }
     }
 
@@ -2170,14 +2587,15 @@ public class SVGRenderer {
     }
 
     private func renderUse(obj: Use, context: ?AbilityContext): Unit {
-        if (obj.width.isZero() || obj.height.isZero()) {
+        if ((obj.width.isSet() && obj.width.isZero()) || (obj.height.isSet() && obj.height.isZero())) {
             return
         }
         updateStyleForElement(this.state, obj)
         if (!display()) {
             return
         }
-        let ref: SvgObject = obj.document().resolveIRI(obj.href) ?? return if (let Some(v) <- obj.transform) {
+        let ref: SvgObject = obj.document().resolveIRI(obj.href) ?? return
+        if (let Some(v) <- obj.transform) {
             this.canvas.concat(v)
         }
         let _x: Float64 = if (!obj.x.isZero()) {
@@ -2240,8 +2658,10 @@ public class SVGRenderer {
                 this.state.viewPort.height)
         }
         if (obj.viewBox != Box(0.0, 0.0, 0.0, 0.0)) {
-            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, obj.viewBox, positioning))
-            this.state.viewBox = obj.viewBox
+            let vb: Box = Box(px2vpValue(obj.viewBox.minX), px2vpValue(obj.viewBox.minY),
+                px2vpValue(obj.viewBox.width), px2vpValue(obj.viewBox.height))
+            this.canvas.concat(calculateViewBoxTransform(this.state.viewPort, vb, positioning))
+            this.state.viewBox = vb
         } else {
             this.canvas.translate(this.state.viewPort.minX, this.state.viewPort.minY, Paint(Option<Paint>.None))
         }
@@ -2305,7 +2725,7 @@ public class SVGRenderer {
             viewPortUser.width
         }
         let _h: Float64 = if (!height.isZero()) {
-            height.floatValueX(this)
+            height.floatValueY(this)
         } else {
             viewPortUser.height
         }
@@ -2534,30 +2954,44 @@ public class SVGRenderer {
         if (x > 0.0) {
             return atan(y / x)
         } else if (x < 0.0 && y >= 0.0) {
-            return atan(y / x) + Float64.PI
+            return atan(y / x) + Float64.getPI()
         } else if (x < 0.0 && y < 0.0) {
-            return atan(y / x) - Float64.PI
+            return atan(y / x) - Float64.getPI()
         } else if (x == 0.0 && y > 0.0) {
-            return Float64.PI / 2.0
+            return Float64.getPI() / 2.0
         } else if (x == 0.0 && y < 0.0) {
-            return -Float64.PI / 2.0
+            return -Float64.getPI() / 2.0
         } else {
             return 0.0
         }
     }
 
-    private func renderMarker(marker: Marker, pos: MarkerVector, context: ?AbilityContext): Unit {
+    private func renderMarker(marker: Marker, pos: MarkerVector, context: ?AbilityContext,
+        isStart!: Bool = false): Unit {
         var angle: Float64 = 0.0
         var unitsScale: Float64
+        let contextFillPaint: ?Paint = if (this.state.hasFill) {
+            Some(Paint(this.state.fillPaint))
+        } else {
+            None
+        }
+        let contextStrokePaint: ?Paint = if (this.state.hasStroke) {
+            Some(Paint(this.state.strokePaint))
+        } else {
+            None
+        }
         statePush()
         if (marker.orient != 0.0) {
             if (marker.orient.isNaN()) {
                 if (pos.dx != 0.0 || pos.dy != 0.0) {
-                    angle = atan2(pos.dy, pos.dx) * 180.0 / Float64.PI
+                    angle = atan2(pos.dy, pos.dx) * 180.0 / Float64.getPI()
                 }
             } else {
                 angle = marker.orient
             }
+        }
+        if (isStart && marker.orientAutoStartReverse) {
+            angle += 180.0
         }
         unitsScale = if (marker.markerUnitsAreUser) {
             1.0
@@ -2565,26 +2999,28 @@ public class SVGRenderer {
             this.state.style.strokeWidth.floatValueWithDpi(this.dpi)
         }
         this.state = findInheritFromAncestorState(marker)
+        this.state.contextFillPaint = contextFillPaint
+        this.state.contextStrokePaint = contextStrokePaint
         let m: Matrix2D2 = Matrix2D2()
         m.translate(pos.x, y: pos.y)
         m.rotate(angle)
         m.scale(unitsScale, y: unitsScale)
-        let _refX = if (!(marker.refX.isZero())) {
+        let _refX = if (marker.refX.isSet()) {
             marker.refX.floatValueX(this)
         } else {
             0.0
         }
-        let _refY = if (!(marker.refY.isZero())) {
+        let _refY = if (marker.refY.isSet()) {
             marker.refY.floatValueY(this)
         } else {
             0.0
         }
-        let _markerWidth = if (!(marker.markerWidth.isZero())) {
+        let _markerWidth = if (marker.markerWidth.isSet()) {
             marker.markerWidth.floatValueX(this)
         } else {
             3.0
         }
-        let _markerHeight = if (!(marker.markerHeight.isZero())) {
+        let _markerHeight = if (marker.markerHeight.isSet()) {
             marker.markerHeight.floatValueY(this)
         } else {
             3.0
@@ -2614,24 +3050,32 @@ public class SVGRenderer {
             var yOffset: Float64 = 0.0
             if (positioning.getAlignment() != "") {
                 if (positioning.getAlignment() == Alignment.xMidYMin) {
-                } else if (positioning.getAlignment() == Alignment.xMidYMid) {}
-                else if (positioning.getAlignment() == Alignment.xMidYMax) {
                     xOffset -= (_markerWidth - imageW) / 2.0
-                } else if (positioning.getAlignment() == Alignment.xMaxYMin) {}
-                else if (positioning.getAlignment() == Alignment.xMaxYMid) {}
-                else if (positioning.getAlignment() == Alignment.xMaxYMax) {
+                } else if (positioning.getAlignment() == Alignment.xMidYMid) {
+                    xOffset -= (_markerWidth - imageW) / 2.0
+                } else if (positioning.getAlignment() == Alignment.xMidYMax) {
+                    xOffset -= (_markerWidth - imageW) / 2.0
+                } else if (positioning.getAlignment() == Alignment.xMaxYMin) {
+                    xOffset -= (_markerWidth - imageW)
+                } else if (positioning.getAlignment() == Alignment.xMaxYMid) {
+                    xOffset -= (_markerWidth - imageW)
+                } else if (positioning.getAlignment() == Alignment.xMaxYMax) {
                     xOffset -= (_markerWidth - imageW)
                 } else {}
             }
 
             if (positioning.getAlignment() != "") {
                 if (positioning.getAlignment() == Alignment.xMinYMid) {
-                } else if (positioning.getAlignment() == Alignment.xMidYMid) {}
-                else if (positioning.getAlignment() == Alignment.xMaxYMid) {
                     yOffset -= (_markerHeight - imageH) / 2.0
-                } else if (positioning.getAlignment() == Alignment.xMinYMax) {}
-                else if (positioning.getAlignment() == Alignment.xMidYMax) {}
-                else if (positioning.getAlignment() == Alignment.xMaxYMax) {
+                } else if (positioning.getAlignment() == Alignment.xMidYMid) {
+                    yOffset -= (_markerHeight - imageH) / 2.0
+                } else if (positioning.getAlignment() == Alignment.xMaxYMid) {
+                    yOffset -= (_markerHeight - imageH) / 2.0
+                } else if (positioning.getAlignment() == Alignment.xMinYMax) {
+                    yOffset -= (_markerHeight - imageH)
+                } else if (positioning.getAlignment() == Alignment.xMidYMax) {
+                    yOffset -= (_markerHeight - imageH)
+                } else if (positioning.getAlignment() == Alignment.xMaxYMax) {
                     yOffset -= (_markerHeight - imageH)
                 } else {}
             }
@@ -2662,16 +3106,29 @@ public class RendererState {
     var style: Style
     var hasFill: Bool = true
     var hasStroke: Bool = false
+    var fillSpecified: Bool = false
     var viewPort: Box = Box(0.0, 0.0, 0.0, 0.0)
     var viewBox: Box = Box(0.0, 0.0, 0.0, 0.0)
     var fillPaint: Paint
     var spacePreserve: Bool = false
     var strokePaint: Paint
+    var inObjectBoundingBox: Bool = false
+    var contextFillPaint: ?Paint = None
+    var contextStrokePaint: ?Paint = None
+
+    func getTextPaint(): Paint {
+        return if (this.hasFill) {
+            this.fillPaint
+        } else {
+            this.strokePaint
+        }
+    }
 
     init(copy: ?RendererState) {
         if (let Some(v) <- copy) {
             this.hasFill = v.hasFill
             this.hasStroke = v.hasStroke
+            this.fillSpecified = v.fillSpecified
             this.fillPaint = Paint(v.fillPaint)
             this.strokePaint = Paint(v.strokePaint)
             if (v.viewPort != Box(0.0, 0.0, 0.0, 0.0)) {
@@ -2681,7 +3138,14 @@ public class RendererState {
                 this.viewBox = Box(v.viewBox.minX, v.viewBox.minY, v.viewBox.width, v.viewBox.height)
             }
             this.spacePreserve = v.spacePreserve
-            this.style = v.style
+            this.style = v.style.clone()
+            this.inObjectBoundingBox = v.inObjectBoundingBox
+            if (let Some(paint) <- v.contextFillPaint) {
+                this.contextFillPaint = Some(Paint(paint))
+            }
+            if (let Some(paint) <- v.contextStrokePaint) {
+                this.contextStrokePaint = Some(Paint(paint))
+            }
         } else {
             this.fillPaint = Paint(Option<Paint>.None)
             this.fillPaint.setStroke(false)
@@ -2697,55 +3161,116 @@ abstract class TextProcessor {
         return true
     }
 
+    public open func setTextX(x: Float64): Unit {
+    }
+
+    public open func setTextY(y: Float64): Unit {
+    }
+
+    public open func offsetText(dx: Float64, dy: Float64): Unit {
+    }
+
     public func processText(text: String, state: RendererState, canvas: CanvasImpl): Unit
 }
 
 class PlainTextDrawer <: TextProcessor {
     private var x: Float64 = 0.0
     private var y: Float64 = 0.0
-    private var dx: Float64 = 0.0
-    private var dy: Float64 = 0.0
-    private var textAnchor: String = ""
+    private var bbox: ?Box = None
 
-    init(x: Float64, y: Float64, dx: Float64, dy: Float64, textAnchor: String) {
+    init(x: Float64, y: Float64) {
         super()
         this.x = x
         this.y = y
-        this.dx = dx
-        this.dy = dy
-        this.textAnchor = textAnchor
     }
 
     public func processText(text: String, state: RendererState, canvas: CanvasImpl): Unit {
-        if (!textAnchor.isEmpty()) {
-            let textWidth: Float64 = canvas.getContext().measureText(text).width
-            if (textAnchor == "middle") {
-                x -= (textWidth / 2.0)
-            } else if (textAnchor == "end") {
-                x -= textWidth
-            }
-        }
+        let glyphPaint: Paint = state.getTextPaint()
+        let textWidth: Float64 = canvas.measureText(text, glyphPaint).width
         if (visible(state)) {
             // Android/Skia divides letterspacing and puts half before and after each letter.
             // We need to readjust initial text X position to counter that.
-            let letterspacingAdj: Float64 = 2.5
-            let opt: Float64 = if ((x + dx) > letterspacingAdj) {
-                x + dx - letterspacingAdj
+            let letterspacingAdj: Float64 = 0.0
+            let opt: Float64 = if (x > letterspacingAdj) {
+                x - letterspacingAdj
             } else {
-                x + dx
+                x
             }
-            if (state.hasFill) {
-                canvas.drawText(text, opt, y + dy, state.fillPaint)
+            if (state.hasFill && state.hasStroke) {
+                state.strokePaint.setFontSize(glyphPaint.getFontSize())
+                state.strokePaint.setFontFamily(glyphPaint.getFontFamily())
+                state.strokePaint.setFontWeight(glyphPaint.getFontWeight())
+                state.strokePaint.setFontStyle(glyphPaint.getFontStyle())
+                state.strokePaint.setFontAlign(glyphPaint.getFontAlign())
+                state.strokePaint.setFontBaseline(glyphPaint.getFontBaseline())
             }
-            if (state.hasStroke) {
-                canvas.drawText(text, opt, y + dy, state.strokePaint)
+            let sameSolidTextPaint: Bool =
+                state.fillPaint.getGradient().isNone() &&
+                state.strokePaint.getGradient().isNone() &&
+                state.fillPaint.getColor().toUInt32() == state.strokePaint.getColor().toUInt32() &&
+                state.fillPaint.getAlpha() == state.strokePaint.getAlpha()
+            let shouldFillText: Bool = state.hasFill
+            let shouldStrokeText: Bool = state.hasStroke && !(shouldFillText && sameSolidTextPaint)
+            state.fillPaint.setStroke(false)
+            state.strokePaint.setStroke(true)
+            if (shouldFillText) {
+                canvas.drawText(text, opt, y, state.fillPaint)
+            }
+            if (shouldStrokeText) {
+                canvas.drawText(text, opt, y, state.strokePaint)
             }
         }
-        x += canvas.getContext().measureText(text).width
+        if (visible(state) && textWidth > 0.0) {
+            let align: TextAlignStyle = glyphPaint.getFontAlign()
+            let xOffset: Float64 = match (align) {
+                case TextAlignStyle.Center => -textWidth / 2.0
+                case TextAlignStyle.End => -textWidth
+                case TextAlignStyle.Right => -textWidth
+                case _ => 0.0
+            }
+            let fontSize: Float64 = glyphPaint.getFontSize()
+            let segMinX: Float64 = x + xOffset
+            let segMinY: Float64 = y - fontSize
+            let segMaxX: Float64 = segMinX + textWidth
+            let segMaxY: Float64 = y + fontSize * 0.3
+            if (let Some(current) <- this.bbox) {
+                current.union(Box.fromLimits(segMinX, segMinY, segMaxX, segMaxY))
+            } else {
+                this.bbox = Box.fromLimits(segMinX, segMinY, segMaxX, segMaxY)
+            }
+        }
+        x += textWidth
+    }
+
+    public func getTextBoundingBox(): ?Box {
+        return this.bbox
+    }
+
+    public override func setTextX(x: Float64): Unit {
+        this.x = x
+    }
+
+    public override func setTextY(y: Float64): Unit {
+        this.y = y
+    }
+
+    public override func offsetText(dx: Float64, dy: Float64): Unit {
+        this.x += dx
+        this.y += dy
     }
 
     private func visible(state: RendererState): Bool {
         return state.style.visibility
+    }
+}
+
+class TextWidthMeasurer <: TextProcessor {
+    var width: Float64 = 0.0
+
+    public func processText(text: String, state: RendererState, canvas: CanvasImpl): Unit {
+        let paint: Paint = state.getTextPaint()
+        let measuredWidth: Float64 = canvas.measureText(text, paint).width
+        width += measuredWidth
     }
 }
 

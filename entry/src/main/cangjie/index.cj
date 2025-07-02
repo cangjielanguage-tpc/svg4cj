@@ -161,9 +161,6 @@ class Index {
                 Button("RenderBasics19").fontSize(14).onClick {
                     => Router.push(url: "RenderBasics19")
                 }
-                Button("RenderClipPath").fontSize(14).onClick {
-                    => Router.push(url: "RenderClipPath")
-                }
                 Button("RenderDesc").fontSize(14).onClick {
                     => Router.push(url: "RenderDesc")
                 }
@@ -200,8 +197,11 @@ class Index {
                 Button("RenderStop").fontSize(14).onClick {
                     => Router.push(url: "RenderStop")
                 }
-                Button("RenderUse").fontSize(14).onClick {
-                    => Router.push(url: "RenderUse")
+                Button("Render404").fontSize(14).onClick {
+                    => Router.push(url: "Render404")
+                }
+                Button("RenderIconsvg").fontSize(14).onClick {
+                    => Router.push(url: "RenderIconsvg")
                 }
                 Button("RenderTspan").fontSize(14).onClick {
                     => Router.push(url: "RenderTspan")

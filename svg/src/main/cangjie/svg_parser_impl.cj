@@ -4,6 +4,48 @@
 
 package svg
 
+// px2vp 依赖 UI 实例/线程上下文，异步解析渲染线程上可能返回 None。
+// 这里缓存一次 px->vp 比例并做密度兜底，避免异常中断整个渲染流程。
+private let pxToVpRatioBits: AtomicUInt64 = AtomicUInt64(0)
+
+private func resolvePxToVpRatioFromDensity(): Float64 {
+    try {
+        let density: Float64 = Float64(getDefaultDisplaySync().densityPixels)
+        if (density > 0.0) {
+            return 1.0 / density
+        }
+    } catch (e: Exception) {
+        return 1.0
+    }
+    return 1.0
+}
+
+private func resolvePxToVpRatio(): Float64 {
+    try {
+        if (let Some(v) <- px2vp(1.px)) {
+            if (v.value > 0.0) {
+                return v.value
+            }
+        }
+    } catch (e: Exception) {
+        return resolvePxToVpRatioFromDensity()
+    }
+    return resolvePxToVpRatioFromDensity()
+}
+
+func px2vpValue(value: Float64): Float64 {
+    var ratioBits = pxToVpRatioBits.load()
+    if (ratioBits == 0) {
+        let resolvedBits = resolvePxToVpRatio().toBits()
+        if (pxToVpRatioBits.compareAndSwap(0, resolvedBits)) {
+            ratioBits = resolvedBits
+        } else {
+            ratioBits = pxToVpRatioBits.load()
+        }
+    }
+    return value * Float64.fromBits(ratioBits)
+}
+
 public class SVGParserImpl <: SVGParser {
     private static let FEATURE_STRING_PREFIX: String = "http://www.w3.org/TR/SVG11/feature#"
     private static let PATTERN_BLOCK_COMMENTS: Regex = Regex("/\\/\\*[\\s\\S]*?\\*\\//")
@@ -30,47 +72,26 @@ public class SVGParserImpl <: SVGParser {
     private var metadataElementContents: String = ""
     private var styleElementContents: String = ""
     private var inMetadataElement: Bool = false
+    private var convertTransformsToVp: Bool = true
 
     public func parseString(s: String): SVGBase {
-        var str = s
-        str = str.replace("stroke-", "stroke_").replace("font-", "font_").replace("text-", "text").replace("fill-",
-            "fill_").replace("stop-", "stop_").replace("clip-", "clip_").replace("marker-", "marker_").replace("xml:",
-            "xml_")
         startDocument()
         let buf = ByteBuffer()
-        buf.write(str.toArray())
+        buf.write(s.toArray())
         let parser: StaxXmlPullParser = StaxXmlPullParser(buf)
-        var textIng: Bool = false
-        var textObj: Text2 = Text2()
         while (parser.getEventType() != XmlPullParserEvent.END_DOCUMENT) {
             let event = parser.next()
             match (event) {
                 case START_ELEMENT =>
-                    if (parser.getName() == "text") {
-                        textIng = true
-                        textAttribute(parser, textObj)
-                    } else {
-                        startElement(parser)
-                    }
+                    startElement(parser)
                 case END_ELEMENT =>
-                    textIng = false
-                    textObj = Text2()
                     endElement(parser.getName())
                 case TEXT_CHARACTERS =>
-                    if (textIng) {
-                        if (parser.getName() == "text") {
-                            textObj.text = parser.getText()
-                        }
-                        this.currentElement().addChild(textObj)
-                        this.currentElement = textObj
-                    }
-                    if (parser.getName() == "tspan") {
-                        this.ignoring = false
-                        tspan(parser, parser.getText())
-                    }
                     if (parser.getName() == "style") {
                         this.ignoring = false
                         style(parser, parser.getText())
+                    } else if (!this.ignoring) {
+                        appendText(parser.getText())
                     }
                 case OTHER => ()
                 case _ => ()
@@ -89,19 +110,50 @@ public class SVGParserImpl <: SVGParser {
         return this
     }
 
-    func textAttribute(data: StaxXmlPullParser, textObj: Text2): Unit {
+    public func setConvertTransformsToVp(enable: Bool): SVGParserImpl {
+        this.convertTransformsToVp = enable
+        return this
+    }
+
+    private func transformLength(value: Float64): Float64 {
+        if (this.convertTransformsToVp) {
+            return px2vpValue(value)
+        }
+        return value
+    }
+
+    /**
+     * 将文本追加到当前文本容器。
+     *
+     * @param text 待追加的文本。
+     * @throws SVGParseException 当文档缺少根元素时抛出。
+     */
+    private func appendText(text: String): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
         }
-        textObj.document = this.svgDocument
-        textObj.parent = this.currentElement
-        parseAttributesCore(textObj, data)
-        parseAttributesStyle(textObj, data)
-        parseAttributesTransform(textObj, data)
-        parseAttributesConditional(textObj, data)
-        parseAttributesTextPosition(textObj, data)
+        let current = this.currentElement()
+        if (!(current is TextContainer)) {
+            return
+        }
+        let sequence = TextSequence(text)
+        sequence.document = this.svgDocument
+        sequence.parent = this.currentElement
+        if (let Some(root) <- (current as TextRoot)) {
+            sequence.setTextRoot(root)
+        } else if (let Some(child) <- (current as TextChild)) {
+            sequence.setTextRoot(child.getTextRoot())
+        }
+        current.addChild(sequence)
     }
 
+    /**
+     * 解析元素的核心属性。
+     *
+     * @param obj 待解析的元素。
+     * @param data XML 属性数据。
+     * @throws SVGParseException 当 xml:space 属性值非法时抛出。
+     */
     private func parseAttributesCore(obj: SvgElementBase, data: StaxXmlPullParser): Unit {
         for (i in 0..data.getAttributeCount()) {
             let qname: String = data.getAttributeName(i)
@@ -147,6 +199,13 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
+    /**
+     * 解析 SVG transform 属性。
+     *
+     * @param val transform 属性值。
+     * @return 解析后的变换矩阵。
+     * @throws SVGParseException 当 transform 属性语法非法时抛出。
+     */
     private func parseTransformList(val: String): Matrix2D2 {
         let matrix: Matrix2D2 = Matrix2D2()
         let scan: TextScanner = TextScanner(val)
@@ -176,7 +235,7 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     let m: Matrix2D2 = Matrix2D2()
-                    m.setValues(a: a, b: c, c: e, d: b, tx: d, ty: f)
+                    m.setValues(a: a, b: b, c: c, d: d, tx: transformLength(e), ty: transformLength(f))
                     matrix.appendMatrix(m)
                 case "translate" =>
                     scan.skipWhitespace()
@@ -187,9 +246,9 @@ public class SVGParserImpl <: SVGParser {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
                     if (ty.isNaN()) {
-                        matrix.translate(tx, y: 0.0)
+                        matrix.translate(transformLength(tx), y: 0.0)
                     } else {
-                        matrix.translate(tx, y: ty)
+                        matrix.translate(transformLength(tx), y: transformLength(ty))
                     }
                 case "scale" =>
                     scan.skipWhitespace()
@@ -216,7 +275,7 @@ public class SVGParserImpl <: SVGParser {
                     if (cx.isNaN()) {
                         matrix.rotate(ang)
                     } else if (!cy.isNaN()) {
-                        matrix.rotate(ang, cx: cx, cy: cy)
+                        matrix.rotate(ang, cx: transformLength(cx), cy: transformLength(cy))
                     } else {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
@@ -227,7 +286,7 @@ public class SVGParserImpl <: SVGParser {
                     if (ang.isNaN() || !scan.consume(")")) {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
-                    matrix.skew(tan(ang * (Float64.PI / 180.0)), 0.0)
+                    matrix.skew(tan(ang * (Float64.getPI() / 180.0)), 0.0)
                 case "skewY" =>
                     scan.skipWhitespace()
                     let ang2: Float64 = scan.nextFloat()
@@ -235,7 +294,7 @@ public class SVGParserImpl <: SVGParser {
                     if (ang2.isNaN() || !scan.consume(")")) {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
-                    matrix.skew(0.0, tan(ang2 * (Float64.PI / 180.0)))
+                    matrix.skew(0.0, tan(ang2 * (Float64.getPI() / 180.0)))
                 case _ => throw SVGParseException("Invalid transform list fn: " + cmd + ")")
             }
             if (scan.empty()) {
@@ -298,6 +357,12 @@ public class SVGParserImpl <: SVGParser {
         this.currentElement = obj
     }
 
+    /**
+     * 解析 g 元素。
+     *
+     * @param data XML 属性数据。
+     * @throws SVGParseException 当文档缺少根 svg 元素或元素属性解析失败时抛出。
+     */
     private func g(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
@@ -313,6 +378,12 @@ public class SVGParserImpl <: SVGParser {
         this.currentElement = obj
     }
 
+    /**
+     * 解析 defs 元素。
+     *
+     * @param data XML 属性数据。
+     * @throws SVGParseException 当文档缺少根 svg 元素或元素属性解析失败时抛出。
+     */
     private func defs(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
@@ -327,6 +398,12 @@ public class SVGParserImpl <: SVGParser {
         this.currentElement = obj
     }
 
+    /**
+     * 解析 a 元素。
+     *
+     * @param data XML 属性数据。
+     * @throws SVGParseException 当文档缺少根 svg 元素或元素属性解析失败时抛出。
+     */
     private func a(data: StaxXmlPullParser): Unit {
         if (this.currentElement.isNone()) {
             throw SVGParseException("Invalid document. Root element must be <svg>")
@@ -346,7 +423,7 @@ public class SVGParserImpl <: SVGParser {
     private func parseAttributesA(obj: A, data: StaxXmlPullParser) {
         for (i in 0..data.getAttributeCount()) {
             match (data.getAttributeName(i)) {
-                case "href" => obj.href = data.getAttributeValue(i)
+                case "href" | "xlink:href" | "xlink_href" => obj.href = data.getAttributeValue(i)
                 case _ => ()
             }
         }
@@ -384,7 +461,7 @@ public class SVGParserImpl <: SVGParser {
                     if (obj.height.isNegative()) {
                         throw SVGParseException("Invalid <use> element. height cannot be negative")
                     }
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
                 case _ => ()
             }
         }
@@ -593,6 +670,7 @@ public class SVGParserImpl <: SVGParser {
         let name: String = data.getName()
         if (this.ignoring) {
             this.ignoreDepth++
+            return
         }
         if (name == SVGXMLConstants.SVG_SVG_TAG) {
             svg(data)
@@ -620,6 +698,10 @@ public class SVGParserImpl <: SVGParser {
             polygon(data)
         } else if (name == SVGXMLConstants.SVG_TREF_TAG) {
             tref(data)
+        } else if (name == SVGXMLConstants.SVG_TEXT_TAG) {
+            text(data)
+        } else if (name == SVGXMLConstants.SVG_TSPAN_TAG) {
+            tspan(data)
         } else if (name == SVGXMLConstants.SVG_SWITCH_TAG) {
             zwitch(data)
         } else if (name == SVGXMLConstants.SVG_SYMBOL_TAG) {
@@ -648,10 +730,28 @@ public class SVGParserImpl <: SVGParser {
             view(data)
         } else if (name == SVGXMLConstants.SVG_MASK_TAG) {
             mask(data)
+        } else if (name == SVGXMLConstants.SVG_STYLE_TAG) {
+            style(data, "")
         } else {
             this.ignoring = true
             this.ignoreDepth = 1
         }
+    }
+
+    private func text(data: StaxXmlPullParser): Unit {
+        if (this.currentElement.isNone()) {
+            throw SVGParseException("Invalid document. Root element must be <svg>")
+        }
+        let obj: Text2 = Text2()
+        obj.document = this.svgDocument
+        obj.parent = this.currentElement
+        parseAttributesCore(obj, data)
+        parseAttributesStyle(obj, data)
+        parseAttributesTransform(obj, data)
+        parseAttributesConditional(obj, data)
+        parseAttributesTextPosition(obj, data)
+        this.currentElement().addChild(obj)
+        this.currentElement = obj
     }
 
     private func image(data: StaxXmlPullParser): Unit {
@@ -686,7 +786,7 @@ public class SVGParserImpl <: SVGParser {
                     if (obj.height.isNegative()) {
                         throw SVGParseException("Invalid <Image> element. height cannot be negative")
                     }
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
                 case "preserveAspectRatio" => SVGParserImpl.parsePreserveAspectRatio(obj, val)
                 case _ => ()
             }
@@ -766,8 +866,15 @@ public class SVGParserImpl <: SVGParser {
                 }
                 case "orient" => if ("auto" == val) {
                     obj.orient = Float64.NaN
+                } else if ("auto-start-reverse" == val) {
+                    obj.orient = Float64.NaN
+                    obj.orientAutoStartReverse = true
                 } else {
-                    obj.orient = parseFloat(val)
+                    obj.orient = try {
+                        parseFloat(val)
+                    } catch (e: Exception) {
+                        0.0
+                    }
                 }
 
                 case _ => ()
@@ -796,8 +903,10 @@ public class SVGParserImpl <: SVGParser {
             match (data.getAttributeName(i)) {
                 case "gradientUnits" => if ("objectBoundingBox" == val) {
                     obj.gradientUnitsAreUser = false
+                    obj.gradientUnitsAreUserSet = true
                 } else if ("userSpaceOnUse" == val) {
                     obj.gradientUnitsAreUser = true
+                    obj.gradientUnitsAreUserSet = true
                 } else {
                     throw SVGParseException("Invalid value for attribute gradientUnits")
                 }
@@ -805,11 +914,12 @@ public class SVGParserImpl <: SVGParser {
                 case "spreadMethod" =>
                     try {
                         obj.spreadMethod.val = val
+                        obj.spreadMethodSet = true
                     } catch (e: SVGParseException) {
                         throw SVGParseException("Invalid spreadMethod attribute. \"" + val + "\" is not a valid value.")
                     }
                     break
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
                 case _ => ()
             }
         }
@@ -883,7 +993,7 @@ public class SVGParserImpl <: SVGParser {
         for (i in 0..data.getAttributeCount()) {
             let val: String = data.getAttributeValue(i)
             match (data.getAttributeName(i)) {
-                case "offset" => obj.offset = Int64(parseGradientOffset(val))
+                case "offset" => obj.offset = parseGradientOffset(val)
                 case _ => ()
             }
         }
@@ -907,8 +1017,8 @@ public class SVGParserImpl <: SVGParser {
             if (scalar < 0.0) {
                 return 0.0
             } else {
-                if (scalar > 100.0) {
-                    return 100.0
+                if (scalar > 1.0) {
+                    return 1.0
                 }
                 return scalar
             }
@@ -938,8 +1048,10 @@ public class SVGParserImpl <: SVGParser {
             let val: String = data.getAttributeValue(i)
             match (data.getAttributeName(i)) {
                 case "clipPathUnits" => if ("objectBoundingBox" == val) {
+                    obj.clipPathUnitsAreUserSpecified = true
                     obj.clipPathUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
+                    obj.clipPathUnitsAreUserSpecified = true
                     obj.clipPathUnitsAreUser = true
                 } else {
                     throw SVGParseException("Invalid value for attribute clipPathUnits")
@@ -968,7 +1080,7 @@ public class SVGParserImpl <: SVGParser {
         for (i in 0..data.getAttributeCount()) {
             let val: String = data.getAttributeValue(i)
             match (data.getAttributeName(i)) {
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
                 case "startOffset" => obj.startOffset = parseLength(val)
                 case _ => ()
             }
@@ -996,16 +1108,20 @@ public class SVGParserImpl <: SVGParser {
             let val: String = data.getAttributeValue(i)
             match (data.getAttributeName(i)) {
                 case "patternUnits" => if ("objectBoundingBox" == val) {
+                    obj.patternUnitsAreUserSet = true
                     obj.patternUnitsAreUser = false
                 } else if ("userSpaceOnUse" == val) {
+                    obj.patternUnitsAreUserSet = true
                     obj.patternUnitsAreUser = true
                 } else {
                     throw SVGParseException("Invalid value for attribute patternUnits")
                 }
                 case "patternContentUnits" =>
                     if ("objectBoundingBox" == val) {
+                        obj.patternContentUnitsAreUserSet = true
                         obj.patternContentUnitsAreUser = false
                     } else if ("userSpaceOnUse" == val) {
+                        obj.patternContentUnitsAreUserSet = true
                         obj.patternContentUnitsAreUser = true
                     } else {
                         throw SVGParseException("Invalid value for attribute patternContentUnits")
@@ -1024,7 +1140,7 @@ public class SVGParserImpl <: SVGParser {
                     if (obj.height.isNegative()) {
                         throw SVGParseException("Invalid <pattern> element. height cannot be negative")
                     }
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
 
                 case _ => ()
             }
@@ -1099,15 +1215,24 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
-    private func tspan(data: StaxXmlPullParser, text: String): Unit {
+    private func tspan(data: StaxXmlPullParser): Unit {
+        let current = this.currentElement ?? throw SVGParseException("Invalid document. Root element must be <svg>")
+        if (!(current is TextContainer)) {
+            throw SVGParseException(
+                "Invalid document. <tspan> elements are only valid inside <text> or other <tspan> elements.")
+        }
         let obj: TSpan = TSpan()
         obj.document = this.svgDocument
         obj.parent = this.currentElement
-        obj.text = text
         parseAttributesCore(obj, data)
         parseAttributesStyle(obj, data)
         parseAttributesConditional(obj, data)
         parseAttributesTextPosition(obj, data)
+        if (let Some(root) <- (current as TextRoot)) {
+            obj.setTextRoot(root)
+        } else if (let Some(child) <- (current as TextChild)) {
+            obj.setTextRoot(child.getTextRoot())
+        }
         currentElement().addChild(obj)
         currentElement = obj
     }
@@ -1132,7 +1257,7 @@ public class SVGParserImpl <: SVGParser {
         for (i in 0..data.getAttributeCount()) {
             let val = data.getAttributeValue(i)
             match (data.getAttributeName(i)) {
-                case "href" => obj.href = val
+                case "href" | "xlink:href" | "xlink_href" => obj.href = val
                 case _ => ()
             }
         }
@@ -1257,7 +1382,7 @@ public class SVGParserImpl <: SVGParser {
                 case "x" => obj.x = parseLengthList(val)
                 case "y" => obj.y = parseLengthList(val)
                 case "dx" => obj.dx = parseLengthList(val)
-                case "hredyf" => obj.dy = parseLengthList(val)
+                case "dy" => obj.dy = parseLengthList(val)
                 case _ => ()
             }
         }
@@ -1512,9 +1637,7 @@ public class SVGParserImpl <: SVGParser {
             scan.skipWhitespace()
 
             match (pathCommand) {
-                case b'M' => return path
-                case b'm' =>
-                    return path
+                case b'M' | b'm' =>
                     x = scan.nextFloat()
                     y = scan.checkedNextFloat(x)
                     if (y.isNaN()) {
@@ -1537,9 +1660,7 @@ public class SVGParserImpl <: SVGParser {
                     } else {
                         b'L'
                     }
-                case b'L' => return path
-                case b'l' =>
-                    return path
+                case b'L' | b'l' =>
                     x = scan.nextFloat()
                     y = scan.checkedNextFloat(x)
                     if (y.isNaN()) {
@@ -1554,8 +1675,7 @@ public class SVGParserImpl <: SVGParser {
                     lastControlX = x
                     currentY = y
                     lastControlY = y
-                case b'C' => return path
-                case b'c' =>
+                case b'C' | b'c' =>
                     x1 = scan.nextFloat()
                     y1 = scan.checkedNextFloat(x1)
                     x2 = scan.checkedNextFloat(y1)
@@ -1578,8 +1698,7 @@ public class SVGParserImpl <: SVGParser {
                     lastControlY = y2
                     currentX = x
                     currentY = y
-                case b'S' => return path
-                case b's' =>
+                case b'S' | b's' =>
                     x1 = 2.0 * currentX - lastControlX
                     y1 = 2.0 * currentY - lastControlY
                     x2 = scan.nextFloat()
@@ -1600,15 +1719,13 @@ public class SVGParserImpl <: SVGParser {
                     lastControlY = y2
                     currentX = x
                     currentY = y
-                case b'Z' => return path
-                case b'z' =>
+                case b'Z' | b'z' =>
                     path.close()
                     currentX = lastMoveX
                     lastControlX = lastMoveX
                     currentY = lastMoveY
                     lastControlY = lastMoveY
-                case b'H' => return path
-                case b'h' =>
+                case b'H' | b'h' =>
                     x = scan.nextFloat()
                     if (x.isNaN()) {
                         return path
@@ -1619,8 +1736,7 @@ public class SVGParserImpl <: SVGParser {
                     path.lineTo(x, currentY)
                     currentX = x
                     lastControlX = x
-                case b'V' => return path
-                case b'v' =>
+                case b'V' | b'v' =>
                     y = scan.nextFloat()
                     if (y.isNaN()) {
                         return path
@@ -1631,8 +1747,7 @@ public class SVGParserImpl <: SVGParser {
                     path.lineTo(currentX, y)
                     currentY = y
                     lastControlY = y
-                case b'Q' => return path
-                case b'q' =>
+                case b'Q' | b'q' =>
                     x1 = scan.nextFloat()
                     y1 = scan.checkedNextFloat(x1)
                     x = scan.checkedNextFloat(y1)
@@ -1651,8 +1766,7 @@ public class SVGParserImpl <: SVGParser {
                     lastControlY = y1
                     currentX = x
                     currentY = y
-                case b'T' => return path
-                case b't' =>
+                case b'T' | b't' =>
                     x1 = 2.0 * currentX - lastControlX
                     y1 = 2.0 * currentY - lastControlY
                     x = scan.nextFloat()
@@ -1669,8 +1783,7 @@ public class SVGParserImpl <: SVGParser {
                     lastControlY = y1
                     currentX = x
                     currentY = y
-                case b'A' => return path
-                case b'a' =>
+                case b'A' | b'a' =>
                     rx = scan.nextFloat()
                     ry = scan.checkedNextFloat(rx)
                     xAxisRotation = scan.checkedNextFloat(ry)
@@ -1738,32 +1851,239 @@ public class SVGParserImpl <: SVGParser {
         }
     }
 
+    // 颜色解析：命名为 ArkTS SVGParserImpl.parseColour + SVGRenderer.getRgbaColor 的合并实现。
+    // Cangjie 侧把颜色保存为 Color，因此这里必须一次性解析出正确的 ARGB。
     static func parseColour(val: String): Colour {
-        var opt: String = val.toAsciiLower()
-        if (opt == "white") {
-            return Colour(Color.WHITE)
-        } else if (opt == "black") {
-            return Colour(Color.BLACK)
-        } else if (opt == "red") {
-            return Colour(Color.RED)
-        } else if (opt == "green") {
-            return Colour(Color.GREEN)
-        } else if (opt == "blue") {
-            return Colour(Color.BLUE)
-        } else if (opt == "gray") {
-            return Colour(Color.GRAY)
-        } else {
-            if (opt.startsWith("#") && opt.count("#") == 1) {
-                return Colour(Color(UInt32.parse(opt.replace("#", "0x"))))
-            } else if (opt.startsWith("rgb(") && opt.endsWith(")")) {
-                opt = opt.replace("rgb(", "")
-                opt = opt.replace(")", "")
-                let optArr: Array<String> = opt.split(",", removeEmpty: true)
-                return Colour(Color(UInt8.parse(optArr[0]), UInt8.parse(optArr[1]), UInt8.parse(optArr[2])))
-            } else {
-                return Colour(Color(0x000000))
+        let s: String = val.trimAscii()
+        if (s.size == 0) {
+            throw SVGParseException("Invalid colour value: " + val)
+        }
+        let lower: String = s.toAsciiLower()
+        if (lower == "transparent") {
+            return Colour(SVGParserImpl.colourFromArgb(0x00000000u32))
+        }
+        if (let Some(rgb) <- ColourKeywords.getColour(lower)) {
+            return Colour(SVGParserImpl.colourFromArgb(0xFF000000u32 | rgb))
+        }
+        if (s.startsWith("#")) {
+            return SVGParserImpl.parseHexColour(s, val)
+        }
+        if (lower.startsWith("rgb")) {
+            return SVGParserImpl.parseRgbColour(s, val)
+        }
+        if (lower.startsWith("hsl")) {
+            return SVGParserImpl.parseHslColour(s, val)
+        }
+        throw SVGParseException("Invalid colour value: " + val)
+    }
+
+    // 用 0xAARRGGBB 构造 Color。Color(UInt32) 在只给出 RGB 时会把 alpha 补成 0xFF，
+    // 因此全透明色需要单独走通道构造函数，避免丢失 RGB 或变成不透明黑。
+    private static func colourFromArgb(argb: UInt32): Color {
+        let alpha: UInt32 = (argb >> 24) & 0xFFu32
+        if (alpha == 0u32) {
+            let red: UInt8 = UInt8((argb >> 16) & 0xFFu32)
+            let green: UInt8 = UInt8((argb >> 8) & 0xFFu32)
+            let blue: UInt8 = UInt8(argb & 0xFFu32)
+            return Color(red, green, blue, alpha: 0.0)
+        }
+        return Color(argb)
+    }
+
+    private static func parseHexColour(s: String, original: String): Colour {
+        let hex: String = s[1..]
+        let n: Int64 = hex.size
+        if (n == 3) {
+            let r: UInt32 = SVGParserImpl.hexPair(hex[0], hex[0], original)
+            let g: UInt32 = SVGParserImpl.hexPair(hex[1], hex[1], original)
+            let b: UInt32 = SVGParserImpl.hexPair(hex[2], hex[2], original)
+            return Colour(SVGParserImpl.colourFromArgb(0xFF000000u32 | (r << 16) | (g << 8) | b))
+        } else if (n == 4) {
+            let r: UInt32 = SVGParserImpl.hexPair(hex[0], hex[0], original)
+            let g: UInt32 = SVGParserImpl.hexPair(hex[1], hex[1], original)
+            let b: UInt32 = SVGParserImpl.hexPair(hex[2], hex[2], original)
+            let a: UInt32 = SVGParserImpl.hexPair(hex[3], hex[3], original)
+            return Colour(SVGParserImpl.colourFromArgb((a << 24) | (r << 16) | (g << 8) | b))
+        } else if (n == 6) {
+            let r: UInt32 = SVGParserImpl.hexPair(hex[0], hex[1], original)
+            let g: UInt32 = SVGParserImpl.hexPair(hex[2], hex[3], original)
+            let b: UInt32 = SVGParserImpl.hexPair(hex[4], hex[5], original)
+            return Colour(SVGParserImpl.colourFromArgb(0xFF000000u32 | (r << 16) | (g << 8) | b))
+        } else if (n == 8) {
+            let r: UInt32 = SVGParserImpl.hexPair(hex[0], hex[1], original)
+            let g: UInt32 = SVGParserImpl.hexPair(hex[2], hex[3], original)
+            let b: UInt32 = SVGParserImpl.hexPair(hex[4], hex[5], original)
+            let a: UInt32 = SVGParserImpl.hexPair(hex[6], hex[7], original)
+            return Colour(SVGParserImpl.colourFromArgb((a << 24) | (r << 16) | (g << 8) | b))
+        }
+        throw SVGParseException("Invalid colour value: " + original)
+    }
+
+    private static func hexPair(hi: UInt8, lo: UInt8, original: String): UInt32 {
+        let h: Int64 = SVGParserImpl.hexDigit(hi, original)
+        let l: Int64 = SVGParserImpl.hexDigit(lo, original)
+        return UInt32(h * 16 + l)
+    }
+
+    private static func hexDigit(c: UInt8, original: String): Int64 {
+        if (c >= b'0' && c <= b'9') {
+            return Int64(c) - Int64(b'0')
+        }
+        if (c >= b'a' && c <= b'f') {
+            return Int64(c) - Int64(b'a') + 10
+        }
+        if (c >= b'A' && c <= b'F') {
+            return Int64(c) - Int64(b'A') + 10
+        }
+        throw SVGParseException("Invalid colour value: " + original)
+    }
+
+    // 取出 func(...) 中括号内的参数文本
+    private static func colourFuncArgs(s: String, original: String): String {
+        if (let Some(openIdx) <- s.indexOf("(")) {
+            if (s.endsWith(")")) {
+                return s[(openIdx + 1)..(s.size - 1)].trimAscii()
             }
         }
+        throw SVGParseException("Invalid colour value: " + original)
+    }
+
+    private static func colourFuncParts(s: String, original: String): Array<String> {
+        return SVGParserImpl.colourFuncArgs(s, original).replace(",", " ").replace("/", " ").split(" ",
+            removeEmpty: true)
+    }
+
+    private static func parseRgbColour(s: String, original: String): Colour {
+        let parts: Array<String> = SVGParserImpl.colourFuncParts(s, original)
+        if (parts.size < 3) {
+            throw SVGParseException("Invalid colour value: " + original)
+        }
+        let r: UInt32 = SVGParserImpl.colourComponent(parts[0], false, original)
+        let g: UInt32 = SVGParserImpl.colourComponent(parts[1], false, original)
+        let b: UInt32 = SVGParserImpl.colourComponent(parts[2], false, original)
+        var a: UInt32 = 255u32
+        if (parts.size >= 4) {
+            a = SVGParserImpl.colourComponent(parts[3], true, original)
+        }
+        return Colour(SVGParserImpl.colourFromArgb((a << 24) | (r << 16) | (g << 8) | b))
+    }
+
+    private static func parseHslColour(s: String, original: String): Colour {
+        let parts: Array<String> = SVGParserImpl.colourFuncParts(s, original)
+        if (parts.size < 3) {
+            throw SVGParseException("Invalid colour value: " + original)
+        }
+        let hue: Float64 = SVGParserImpl.stripDegrees(parts[0], original)
+        let sat: Float64 = SVGParserImpl.percentFraction(parts[1], original)
+        let light: Float64 = SVGParserImpl.percentFraction(parts[2], original)
+        var a: UInt32 = 255u32
+        if (parts.size >= 4) {
+            a = SVGParserImpl.colourComponent(parts[3], true, original)
+        }
+        var hueNorm: Float64 = hue
+        while (hueNorm < 0.0) {
+            hueNorm += 360.0
+        }
+        while (hueNorm >= 360.0) {
+            hueNorm -= 360.0
+        }
+        let h: Float64 = hueNorm / 60.0
+        let s1: Float64 = if (sat < 0.0) {
+            0.0
+        } else {
+            min(sat, 1.0)
+        }
+        let l1: Float64 = if (light < 0.0) {
+            0.0
+        } else {
+            min(light, 1.0)
+        }
+        let t2: Float64 = if (l1 <= 0.5) {
+            l1 * (s1 + 1.0)
+        } else {
+            l1 + s1 - (l1 * s1)
+        }
+        let t1: Float64 = l1 * 2.0 - t2
+        let r: UInt32 = SVGParserImpl.clamp255ToByte(SVGParserImpl.hueToRgb(t1, t2, h + 2.0) * 255.0)
+        let g: UInt32 = SVGParserImpl.clamp255ToByte(SVGParserImpl.hueToRgb(t1, t2, h) * 255.0)
+        let b: UInt32 = SVGParserImpl.clamp255ToByte(SVGParserImpl.hueToRgb(t1, t2, h - 2.0) * 255.0)
+        return Colour(SVGParserImpl.colourFromArgb((a << 24) | (r << 16) | (g << 8) | b))
+    }
+
+    private static func hueToRgb(t1: Float64, t2: Float64, hue: Float64): Float64 {
+        var h: Float64 = hue
+        if (h < 0.0) {
+            h += 6.0
+        }
+        if (h >= 6.0) {
+            h -= 6.0
+        }
+        if (h < 1.0) {
+            return (t2 - t1) * h + t1
+        }
+        if (h < 3.0) {
+            return t2
+        }
+        if (h < 4.0) {
+            return (t2 - t1) * (4.0 - h) + t1
+        }
+        return t1
+    }
+
+    // 解析 rgb()/hsl() 的单个分量。isAlpha 为 true 时返回 0..255 的 alpha 字节；
+    // 否则返回 0..255 的颜色通道字节。
+    private static func colourComponent(part: String, isAlpha: Bool, original: String): UInt32 {
+        let v: String = part.trimAscii()
+        if (v.endsWith("%")) {
+            let num: Float64 = SVGParserImpl.safeParseFloat(v[..(v.size - 1)].trimAscii(), original)
+            if (isAlpha) {
+                return SVGParserImpl.clampUnitToByte(num / 100.0)
+            }
+            return SVGParserImpl.clamp255ToByte(num * 255.0 / 100.0)
+        }
+        let num: Float64 = SVGParserImpl.safeParseFloat(v, original)
+        if (isAlpha) {
+            return SVGParserImpl.clampUnitToByte(num)
+        }
+        return SVGParserImpl.clamp255ToByte(num)
+    }
+
+    private static func percentFraction(part: String, original: String): Float64 {
+        let v: String = part.trimAscii()
+        if (v.endsWith("%")) {
+            return SVGParserImpl.safeParseFloat(v[..(v.size - 1)].trimAscii(), original) / 100.0
+        }
+        return SVGParserImpl.safeParseFloat(v, original) / 100.0
+    }
+
+    private static func stripDegrees(part: String, original: String): Float64 {
+        let v: String = part.trimAscii().toAsciiLower()
+        if (v.endsWith("deg")) {
+            return SVGParserImpl.safeParseFloat(v[..(v.size - 3)].trimAscii(), original)
+        }
+        return SVGParserImpl.safeParseFloat(v, original)
+    }
+
+    private static func safeParseFloat(v: String, original: String): Float64 {
+        try {
+            return SVGParserImpl.parseFloat(v)
+        } catch (e: SVGParseException) {
+            throw SVGParseException("Invalid colour value: " + original)
+        }
+    }
+
+    private static func clamp255ToByte(v: Float64): UInt32 {
+        if (v <= 0.0) {
+            return 0u32
+        }
+        if (v >= 255.0) {
+            return 255u32
+        }
+        return UInt32(v + 0.5)
+    }
+
+    private static func clampUnitToByte(v: Float64): UInt32 {
+        return SVGParserImpl.clamp255ToByte(v * 255.0)
     }
 
     static func parseFillRule(val: String): String {
@@ -1931,9 +2251,9 @@ class ColourKeywords {
         colourKeywords.add("turquoise", 0x40e0d0)
         colourKeywords.add("violet", 0xee82ee)
         colourKeywords.add("wheat", 0xf5deb3)
-        colourKeywords.add("white", 0xffff)
+        colourKeywords.add("white", 0xffffff)
         colourKeywords.add("whitesmoke", 0xF5F5F5)
-        colourKeywords.add("yellow", 0xff00)
+        colourKeywords.add("yellow", 0xffff00)
         colourKeywords.add("yellowgreen", 0x9acd32)
         colourKeywords.add("transparent", 0x000000)
     }

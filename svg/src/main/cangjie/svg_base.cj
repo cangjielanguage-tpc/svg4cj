@@ -236,18 +236,14 @@ public class Box <: Equatable<Box> {
     }
 
     func union(other: Box): Unit {
-        if (other.minX < this.minX) {
-            this.minX = other.minX
-        }
-        if (other.minY < this.minY) {
-            this.minY = other.minY
-        }
-        if (other.maxX() > maxX()) {
-            this.width = other.maxX() - this.minX
-        }
-        if (other.maxY() > maxY()) {
-            this.height = other.maxY() - this.minY
-        }
+        let oldMaxX: Float64 = this.maxX()
+        let oldMaxY: Float64 = this.maxY()
+        let newMinX: Float64 = min(this.minX, other.minX)
+        let newMinY: Float64 = min(this.minY, other.minY)
+        this.minX = newMinX
+        this.minY = newMinY
+        this.width = max(oldMaxX, other.maxX()) - newMinX
+        this.height = max(oldMaxY, other.maxY()) - newMinY
     }
 
     public operator func ==(that: Box): Bool {
@@ -425,7 +421,7 @@ public interface SvgConditional {
 class Colour <: SvgPaint {
     var colour: Color
     static let BLACK: Colour = Colour(Color(0x000000))
-    static let TRANSPARENT: Colour = Colour(Color(0xFFFFFF))
+    static let TRANSPARENT: Colour = Colour(Color.TRANSPARENT)
 
     init(val: Color) {
         super()
@@ -446,6 +442,15 @@ class CurrentColor <: SvgPaint {
 
     static func getInstance(): CurrentColor {
         return instance
+    }
+}
+
+class ContextPaint <: SvgPaint {
+    var isFill: Bool = false
+
+    init(isFill: Bool) {
+        super()
+        this.isFill = isFill
     }
 }
 
@@ -487,7 +492,7 @@ class SVGLength {
             case "in" => return this.value * renderer.getDPI()
             case "cm" => return this.value * renderer.getDPI() / 2.54
             case "mm" => return this.value * renderer.getDPI() / 25.4
-            case "pt" => return this.value
+            case "pt" => return this.value * renderer.getDPI() / 72.0
             case "pc" => return this.value * renderer.getDPI() / 6.0
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
@@ -502,32 +507,44 @@ class SVGLength {
     }
 
     func floatValueX(renderer: SVGRenderer): Float64 {
+        if (renderer.isInObjectBoundingBox()) {
+            if (this.uni == Units.percent) {
+                return this.value / 100.0
+            }
+            return this.value
+        }
         match (this.uni) {
             case "em" => return this.value * renderer.getCurrentFontSize()
             case "ex" => return this.value * renderer.getCurrentFontXHeight()
-            case "in" => return this.value * renderer.getDPI() / pxTovp
-            case "cm" => return (this.value * renderer.getDPI() / 2.54) / pxTovp
-            case "mm" => return (this.value * renderer.getDPI() / 25.4) / pxTovp
-            case "pt" => return this.value / pxTovp
-            case "pc" => return (this.value * renderer.getDPI() / 6.0) / pxTovp
+            case "in" => return px2vpValue(this.value * renderer.getDPI())
+            case "cm" => return px2vpValue(this.value * renderer.getDPI() / 2.54)
+            case "mm" => return px2vpValue(this.value * renderer.getDPI() / 25.4)
+            case "pt" => return px2vpValue(this.value * renderer.getDPI() / 72.0)
+            case "pc" => return px2vpValue(this.value * renderer.getDPI() / 6.0)
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
                 if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                    return this.value / pxTovp
+                    return px2vpValue(this.value)
                 } else {
-                    return (this.value * viewPortUser.width / 100.0) / pxTovp
+                    return px2vpValue(this.value * viewPortUser.width / 100.0)
                 }
-            case _ => return this.value / pxTovp
+            case _ => return px2vpValue(this.value)
         }
     }
 
     func floatValueY(renderer: SVGRenderer): Float64 {
+        if (renderer.isInObjectBoundingBox()) {
+            if (this.uni == Units.percent) {
+                return this.value / 100.0
+            }
+            return this.value
+        }
         if (this.uni == Units.percent) {
             let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
             if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                return return this.value / pxTovp
+                return px2vpValue(this.value)
             }
-            return return (this.value * viewPortUser.height / 100.0) / pxTovp
+            return px2vpValue(this.value * viewPortUser.height / 100.0)
         }
         return floatValueX(renderer)
     }
@@ -554,7 +571,7 @@ class SVGLength {
                     return this.value * w / 100.0
                 }
                 let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
-                return (this.value * n / 100.0) / pxTovp
+                return px2vpValue(this.value * n / 100.0)
             }
             return floatValueX(renderer)
         }
@@ -565,7 +582,7 @@ class SVGLength {
             case "in" => return this.value * dpi
             case "cm" => return this.value * dpi / 2.54
             case "mm" => return this.value * dpi / 25.4
-            case "pt" => return this.value
+            case "pt" => return this.value * dpi / 72.0
             case "pc" => return this.value * dpi / 6.0
             case _ => return this.value
         }
@@ -573,6 +590,11 @@ class SVGLength {
 
     func isZero(): Bool {
         return this.value == 0.0
+    }
+
+    // uni 为空表示该长度属性未在文档中指定（默认 SVGLength()）
+    func isSet(): Bool {
+        return this.uni != ""
     }
 
     func isNegative(): Bool {
@@ -715,8 +737,8 @@ class Path2 <: GraphicsElement {
 class Rect2 <: GraphicsElement {
     var x: SVGLength = SVGLength()
     var y: SVGLength = SVGLength()
-    var width: SVGLength = SVGLength(100.0)
-    var height: SVGLength = SVGLength(100.0)
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
     var rx: SVGLength = SVGLength()
     var ry: SVGLength = SVGLength()
 
@@ -781,10 +803,7 @@ interface TextChild {
 
 open class TextContainer <: SvgConditionalContainer {
     public func addChild(elem: SvgObject): Unit {
-        try {
-            this.children.add(elem)
-        } catch (e: Exception) {
-        }
+        this.children.add(elem)
     }
 }
 
@@ -904,6 +923,7 @@ class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
     var markerWidth: SVGLength = SVGLength()
     var markerHeight: SVGLength = SVGLength()
     var orient: Float64 = 0.0
+    var orientAutoStartReverse: Bool = false
     public init() {
         isRender = false
     }
@@ -916,14 +936,22 @@ class Marker <: SvgViewBoxContainer & NotDirectlyRendered {
 open class GradientElement <: SvgElementBase & SvgContainer & Equatable<GradientElement> {
     var children: ArrayList<SvgObject> = ArrayList<SvgObject>()
     var gradientUnitsAreUser: Bool = false
+    var gradientUnitsAreUserSet: Bool = false
     var gradientTransform: ?Matrix2D2 = None
     var spreadMethod: GradientSpread = GradientSpread()
+    var spreadMethodSet: Bool = false
     var href: String = ""
 
     public func getChildren(): ArrayList<SvgObject> {
         return this.children
     }
 
+    /**
+     * 向渐变元素添加子元素。
+     *
+     * @param elem 待添加的子元素，只允许为 Stop。
+     * @throws SVGParseException 当子元素不是 Stop 时抛出。
+     */
     public func addChild(elem: SvgObject): Unit {
         if (elem is Stop) {
             this.children.add(elem)
@@ -942,7 +970,7 @@ open class GradientElement <: SvgElementBase & SvgContainer & Equatable<Gradient
 }
 
 class Stop <: SvgElementBase & SvgContainer {
-    var offset: Int64 = 0
+    var offset: Float64 = 0.0
 
     public func getChildren(): ArrayList<SvgObject> {
         return ArrayList<SvgObject>()
@@ -984,6 +1012,7 @@ class ClipPath <: Group & NotDirectlyRendered {
         isRender = false
     }
     var clipPathUnitsAreUser: Bool = false
+    var clipPathUnitsAreUserSpecified: Bool = false
 
     public func getNodeName(): String {
         return "clipPath"
@@ -995,7 +1024,9 @@ class Pattern <: SvgViewBoxContainer & NotDirectlyRendered & Equatable<Pattern> 
         isRender = false
     }
     var patternUnitsAreUser: Bool = false
-    var patternContentUnitsAreUser: Bool = false
+    var patternUnitsAreUserSet: Bool = false
+    var patternContentUnitsAreUser: Bool = true
+    var patternContentUnitsAreUserSet: Bool = false
     var patternTransform: ?Matrix2D2 = None
     var x: SVGLength = SVGLength()
     var y: SVGLength = SVGLength()

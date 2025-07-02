@@ -17,7 +17,7 @@ class getSVGPixelMap {
 
     func getData(): PixelMap {
         let resourceManager = ResourceManager.getResourceManager(getStageContext(globalAbilityContext.getOrThrow()))
-        let value: Array<UInt8> = resourceManager.getRawFileContent("circle.svg")
+        let value: Array<UInt8> = resourceManager.getRawFileContent("ic_launcher_round.svg")
         let pixelmap = model.getSVGPixelMap(value, globalAbilityContext.getOrThrow())
         pixels = pixelmap
         return pixels.getOrThrow()

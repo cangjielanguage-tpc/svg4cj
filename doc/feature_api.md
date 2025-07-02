@@ -67,14 +67,13 @@ public class SVGImageViewModel {
     public func setFromString(data: String, context: ?AbilityContext): Unit
     
     /*
-     * 生成svg类型的PixelMap对象，目前缺少离屏绘制对象(OffscreenCanvasRenderingContext2D)，导致 pixelMap 无法生成，此接口暂无法使用
+     * 生成svg类型的PixelMap对象
      * 
      * 参数 data - 待生成的数组
      * 参数 context - Ability状态上下文
-     * 参数 screen - 缺省参数 screen 表示当前屏幕密度比例
      * 返回值 PixelMap - PixelMap对象
      */
-    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext, screen!: Float64 = pxTovp): PixelMap
+    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext): PixelMap
 
 }
 ```
