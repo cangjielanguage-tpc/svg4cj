@@ -6,7 +6,7 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "svg": "file:../svg"
+    "@cangjie-tpc/svg": "file:../svg"
   }
 }
 

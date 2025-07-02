@@ -1,0 +1,1 @@
+export { SVGImageView, SVGImageViewModel, global_customLib } from './src/main/ets/pages/cj_svg'

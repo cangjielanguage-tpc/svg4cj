@@ -10,71 +10,70 @@ Svg4cj是一个SVG图片的解析器和渲染器，解析SVG图片并渲染到�
 
 #### 1.1.1 API Description
 
-```cangjie
-public class SVGImageViewModel {
-    
-    /*
-     * 构造
-     */
-    public init(): Unit
-    
-    /*
-     * 设置图表绘制的上下文
-     * 
-     * 参数 context2D - 图表绘制的上下文，参考 ohos 画布组件中的 class CanvasRenderingContext2D 绘制对象类
-     */
-    public func setContext2D(context2D: CanvasRenderingContext2D): Unit
+```ets
+export class SVGImageViewModel {
 
     /*
-     * 设置 SVG 对象
+     * 读取 resources/rawfile 文件，构造 SVG 对象，展示 SVG 图像
      * 
-     * 参数 svg - 要传入的自定义 svg 类对象
-     * 参数 context - Ability状态上下文
-     * 参数 css - String 类型的缺省参数，表示传入的渲染可选项内容，只能修改 css 样式，无法通过接口修改 svg 原有形状
+     * 参数 svgFilename - 读取 resources/rawfile 文件
      */
-    public func setSVG(svg: SVG, context: ?AbilityContext, css!: String = this.renderOptions.css): Unit
+    setSVGGetFromRawfile(svgFilename: string): void
 
+    /*
+     * 读取 SVG 源文件内容，构造 SVG 对象，展示 SVG 图像
+     * 
+     * 参数 svgData - 读取 SVG 源文件内容
+     */
+    setSVGGetFromString(svgData: string): void
+    
+    /*
+     * 读取 Resource 资源，构造 SVG 对象，展示 SVG 图像
+     * 
+     * 参数 svgResource - 读取 Resource 资源
+     */
+    setSVGGetFromResource(svgResource: Resource): void
+    
+    /*
+     * 读取 resources/rawfile 文件，展示 SVG 图像
+     * 
+     * 参数 filename - 读取 resources/rawfile 文件
+     */
+    setImageRawfile(filename: string): void
+    
+    /*
+     * 读取 Resource 资源，展示 SVG 图像
+     * 
+     * 参数 resource - 读取 Resource 资源
+     */
+    setImageResource(resource: Resource): void
+    
+    /*
+     * 读取 SVG 源文件内容，展示 SVG 图像
+     * 
+     * 参数 data - 读取 SVG 源文件内容
+     */
+    setFromString(data: string): void
+    
     /*
      * 设置自定义 css 样式，无法通过此接口修改 svg 原有形状
      * 
      * 参数 css - 设置自定义 css 样式
-     * 参数 context - Ability状态上下文
      */
-    public func setCSS(css: String, context: ?AbilityContext): Unit
+    setCSS(cssValue: string): void
     
     /*
-     * 根据资源对象设置svg 并渲染
+     * 获取 SVG 格式 PixelMap 对象，展示内容
      * 
-     * 参数 resource - Resource对象，参考 ohos 资源管理下的 class Resource 资源类
-     * 参数 context - Ability状态上下文
+     * 参数 pixelmapValue - SVG 源数据
      */
-    public func setImageResource(resource: OhosResource, context: ?AbilityContext): Unit
-    
-    /*
-     * 根据文件对象设置svg 并渲染
-     * 
-     * 参数 filename - 文件地址
-     * 参数 context - Ability状态上下文
-     */
-    public func setImageRawfile(filename: String, context: ?AbilityContext): Unit
+    getSVGPixelMap(pixelmapValue?: Uint8Array): void
 
     /*
-     * 根据 svg 源文件中的内容设置svg 并渲染
+     * 工具类，将 Uint8Array 转为 string 字符串
      * 
-     * 参数 data - svg 源文件的内容
-     * 参数 context - Ability状态上下文
+     * 返回值 string - 返回转换后的 string 字符串
      */
-    public func setFromString(data: String, context: ?AbilityContext): Unit
-    
-    /*
-     * 生成svg类型的PixelMap对象，目前缺少离屏绘制对象(OffscreenCanvasRenderingContext2D)，导致 pixelMap 无法生成，此接口暂无法使用
-     * 
-     * 参数 data - 待生成的数组
-     * 参数 context - Ability状态上下文
-     * 参数 screen - 缺省参数 screen 表示当前屏幕密度比例
-     * 返回值 PixelMap - PixelMap对象
-     */
-    public func getSVGPixelMap(data: Array<UInt8>, context: ?AbilityContext, screen!: Float64 = pxTovp): PixelMap
-
+    unit8ArrayToString(fileData: Uint8Array): string
 }
 ```

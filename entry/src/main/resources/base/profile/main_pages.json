@@ -1,2 +1,13 @@
 {
+  "src": [
+    "pages/Index",
+    "pages/setFromStringSample",
+    "pages/setImageResource",
+    "pages/getSVGPixelMap",
+    "pages/setCss",
+    "pages/setSvgStr",
+    "pages/setSvgResource",
+    "pages/setSvgRawFile",
+    "pages/setImageRawFile"
+  ]
 }
