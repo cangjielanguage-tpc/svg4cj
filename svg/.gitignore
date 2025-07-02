@@ -4,4 +4,5 @@
 /build
 /.cxx
 /.test
-/.libs
+**/IDL_Dependencies_List~
+**/build-script-cache

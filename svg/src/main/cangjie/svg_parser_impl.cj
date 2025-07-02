@@ -227,7 +227,7 @@ public class SVGParserImpl <: SVGParser {
                     if (ang.isNaN() || !scan.consume(")")) {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
-                    matrix.skew(tan(ang * (Float64.PI / 180.0)), 0.0)
+                    matrix.skew(tan(ang * (Float64.getPI() / 180.0)), 0.0)
                 case "skewY" =>
                     scan.skipWhitespace()
                     let ang2: Float64 = scan.nextFloat()
@@ -235,7 +235,7 @@ public class SVGParserImpl <: SVGParser {
                     if (ang2.isNaN() || !scan.consume(")")) {
                         throw SVGParseException("Invalid transform list: " + val)
                     }
-                    matrix.skew(0.0, tan(ang2 * (Float64.PI / 180.0)))
+                    matrix.skew(0.0, tan(ang2 * (Float64.getPI() / 180.0)))
                 case _ => throw SVGParseException("Invalid transform list fn: " + cmd + ")")
             }
             if (scan.empty()) {

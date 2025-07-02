@@ -505,19 +505,19 @@ class SVGLength {
         match (this.uni) {
             case "em" => return this.value * renderer.getCurrentFontSize()
             case "ex" => return this.value * renderer.getCurrentFontXHeight()
-            case "in" => return this.value * renderer.getDPI() / pxTovp
-            case "cm" => return (this.value * renderer.getDPI() / 2.54) / pxTovp
-            case "mm" => return (this.value * renderer.getDPI() / 25.4) / pxTovp
-            case "pt" => return this.value / pxTovp
-            case "pc" => return (this.value * renderer.getDPI() / 6.0) / pxTovp
+            case "in" => return this.value * renderer.getDPI()
+            case "cm" => return this.value * renderer.getDPI() / 2.54
+            case "mm" => return this.value * renderer.getDPI() / 25.4
+            case "pt" => return this.value
+            case "pc" => return this.value * renderer.getDPI() / 6.0
             case "percent" =>
                 let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
                 if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                    return this.value / pxTovp
+                    return this.value
                 } else {
-                    return (this.value * viewPortUser.width / 100.0) / pxTovp
+                    return this.value * viewPortUser.width / 100.0
                 }
-            case _ => return this.value / pxTovp
+            case _ => return this.value
         }
     }
 
@@ -525,9 +525,9 @@ class SVGLength {
         if (this.uni == Units.percent) {
             let viewPortUser: Box = renderer.getCurrentViewPortInUserUnits()
             if (viewPortUser == Box(0.0, 0.0, 0.0, 0.0)) {
-                return return this.value / pxTovp
+                return this.value
             }
-            return return (this.value * viewPortUser.height / 100.0) / pxTovp
+            return this.value * viewPortUser.height / 100.0
         }
         return floatValueX(renderer)
     }
@@ -554,7 +554,7 @@ class SVGLength {
                     return this.value * w / 100.0
                 }
                 let n: Float64 = (sqrt(w * w + h * h) / SVGBase.SQRT2)
-                return (this.value * n / 100.0) / pxTovp
+                return this.value * n / 100.0
             }
             return floatValueX(renderer)
         }
@@ -715,8 +715,8 @@ class Path2 <: GraphicsElement {
 class Rect2 <: GraphicsElement {
     var x: SVGLength = SVGLength()
     var y: SVGLength = SVGLength()
-    var width: SVGLength = SVGLength(100.0)
-    var height: SVGLength = SVGLength(100.0)
+    var width: SVGLength = SVGLength()
+    var height: SVGLength = SVGLength()
     var rx: SVGLength = SVGLength()
     var ry: SVGLength = SVGLength()
 

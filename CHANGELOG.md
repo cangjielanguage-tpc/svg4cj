@@ -1,6 +1,14 @@
-# 0.0.1
+## 1.0.2
 
-1. 支持 SVG 1.1 规范格式图像中的以下元素：
+- 适配 cangjie support plugin 6.1.1.280
+
+## 1.0.1
+
+- 适配 cangjie support plugin 5.1.0.828
+
+## 1.0.0
+
+- 支持 SVG 1.1 规范格式图像中的以下元素：
 ```text
    <svg>
    <g>

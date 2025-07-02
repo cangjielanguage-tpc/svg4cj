@@ -62,7 +62,7 @@ class MatrixValue {
 }
 
 public class Matrix2D2 {
-    static let DEG_TO_RAD: Float64 = Float64.PI / 180.0
+    static let DEG_TO_RAD: Float64 = Float64.getPI() / 180.0
     static let ident: Matrix2D2 = Matrix2D2()
     var a: Float64 = 1.0
     var b: Float64 = 0.0

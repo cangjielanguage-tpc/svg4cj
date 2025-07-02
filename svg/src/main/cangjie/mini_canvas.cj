@@ -35,7 +35,7 @@ public class Paint {
     private var strokeWidth: Float64 = 2.0
     private var fontAlign: TextAlignStyle = TextAlignStyle.Start
     private var fontBaseline: TextBaseline = TextBaseline.Alphabetic
-    private var fontSize: Float64 = 17.0
+    private var fontSize: Float64 = 17.0 * 3.25
     private var fontStyle: FontStyle = FontStyle.Normal
     private var fontWeight: FontWeight = FontWeight.Normal
     private var fontFamily: String = "sans-serif"
@@ -319,7 +319,7 @@ public class CanvasImpl <: ICanvas {
     }
 
     private func updateContextAttributes(context: CanvasRenderingContext2D, paint: Paint): Unit {
-        context.lineWidth(paint.getStrokeWidth() / pxTovp)
+        context.lineWidth(paint.getStrokeWidth())
         context.fillStyle(paint.getColor())
         context.strokeStyle(paint.getColor())
         context.globalAlpha(paint.getAlpha())
@@ -336,7 +336,7 @@ public class CanvasImpl <: ICanvas {
     }
 
     private func updateOffScreenContextAttributes(context: OffscreenCanvasRenderingContext2D, paint: Paint): Unit {
-        context.lineWidth(paint.getStrokeWidth() / pxTovp)
+        context.lineWidth(paint.getStrokeWidth())
         context.fillStyle(paint.getColor())
         context.strokeStyle(paint.getColor())
         context.globalAlpha(paint.getAlpha())
@@ -426,7 +426,7 @@ public class CanvasImpl <: ICanvas {
         paint: Paint): Unit {
         updateOffScreenContextAttributes(context, paint)
         context.beginPath()
-        context.arc(x, y, radius, 0.0, Float64.PI * 2.0)
+        context.arc(x, y, radius, 0.0, Float64.getPI() * 2.0)
         invalidate(context, paint)
     }
 
@@ -434,7 +434,7 @@ public class CanvasImpl <: ICanvas {
         paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.arc(x, y, radius, 0.0, Float64.PI * 2.0)
+        context.arc(x, y, radius, 0.0, Float64.getPI() * 2.0)
         invalidate(context, paint)
     }
 
@@ -456,7 +456,7 @@ public class CanvasImpl <: ICanvas {
         height: Float64, paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.ellipse(x + (width / 2.0), y + (height / 2.0), (width / 2.0), (height / 2.0), 0.0, 0.0, Float64.PI * 2.0
+        context.ellipse(x + (width / 2.0), y + (height / 2.0), (width / 2.0), (height / 2.0), 0.0, 0.0, Float64.getPI() * 2.0
         )
         invalidate(context, paint)
     }
@@ -465,7 +465,7 @@ public class CanvasImpl <: ICanvas {
         height: Float64, paint: Paint): Unit {
         updateOffScreenContextAttributes(context, paint)
         context.beginPath()
-        context.ellipse(x + (width / 2.0), y + (height / 2.0), (width / 2.0), (height / 2.0), 0.0, 0.0, Float64.PI * 2.0
+        context.ellipse(x + (width / 2.0), y + (height / 2.0), (width / 2.0), (height / 2.0), 0.0, 0.0, Float64.getPI() * 2.0
         )
         invalidate(context, paint)
     }
@@ -488,7 +488,7 @@ public class CanvasImpl <: ICanvas {
         if (!paint.isStroke()) {
             context.moveTo(x, y)
         }
-        context.arc(x, y, radius, startAngle / 360.0 * Float64.PI * 2.0, endAngle / 360.0 * Float64.PI * 2.0,
+        context.arc(x, y, radius, startAngle / 360.0 * Float64.getPI() * 2.0, endAngle / 360.0 * Float64.getPI() * 2.0,
             anticlockwise: counterclockwise)
         invalidate(context, paint)
     }
@@ -500,7 +500,7 @@ public class CanvasImpl <: ICanvas {
         if (!paint.isStroke()) {
             context.moveTo(x, y)
         }
-        context.arc(x, y, radius, startAngle / 360.0 * Float64.PI * 2.0, endAngle / 360.0 * Float64.PI * 2.0,
+        context.arc(x, y, radius, startAngle / 360.0 * Float64.getPI() * 2.0, endAngle / 360.0 * Float64.getPI() * 2.0,
             anticlockwise: counterclockwise)
         invalidate(context, paint)
     }
@@ -551,13 +551,13 @@ public class CanvasImpl <: ICanvas {
         height: Float64, radius: Float64, paint: Paint): Unit {
         updateOffScreenContextAttributes(context, paint)
         context.beginPath()
-        context.arc(x + radius, y + radius, radius, Float64.PI, Float64.PI * 3.0 / 2.0)
+        context.arc(x + radius, y + radius, radius, Float64.getPI(), Float64.getPI() * 3.0 / 2.0)
         context.lineTo(width - radius + x, y)
-        context.arc(width - radius + x, radius + y, radius, Float64.PI * 3.0 / 2.0, Float64.PI * 2.0)
+        context.arc(width - radius + x, radius + y, radius, Float64.getPI() * 3.0 / 2.0, Float64.getPI() * 2.0)
         context.lineTo(width + x, height + y - radius)
-        context.arc(width - radius + x, height - radius + y, radius, 0.0, Float64.PI * 1.0 / 2.0)
+        context.arc(width - radius + x, height - radius + y, radius, 0.0, Float64.getPI() * 1.0 / 2.0)
         context.lineTo(radius + x, height + y)
-        context.arc(radius + x, height - radius + y, radius, Float64.PI * 1.0 / 2.0, Float64.PI)
+        context.arc(radius + x, height - radius + y, radius, Float64.getPI() * 1.0 / 2.0, Float64.getPI())
         context.closePath()
         invalidate(context, paint)
     }
@@ -566,13 +566,13 @@ public class CanvasImpl <: ICanvas {
         height: Float64, radius: Float64, paint: Paint): Unit {
         updateContextAttributes(context, paint)
         context.beginPath()
-        context.arc(x + radius, y + radius, radius, Float64.PI, Float64.PI * 3.0 / 2.0)
+        context.arc(x + radius, y + radius, radius, Float64.getPI(), Float64.getPI() * 3.0 / 2.0)
         context.lineTo(width - radius + x, y)
-        context.arc(width - radius + x, radius + y, radius, Float64.PI * 3.0 / 2.0, Float64.PI * 2.0)
+        context.arc(width - radius + x, radius + y, radius, Float64.getPI() * 3.0 / 2.0, Float64.getPI() * 2.0)
         context.lineTo(width + x, height + y - radius)
-        context.arc(width - radius + x, height - radius + y, radius, 0.0, Float64.PI * 1.0 / 2.0)
+        context.arc(width - radius + x, height - radius + y, radius, 0.0, Float64.getPI() * 1.0 / 2.0)
         context.lineTo(radius + x, height + y)
-        context.arc(radius + x, height - radius + y, radius, Float64.PI * 1.0 / 2.0, Float64.PI)
+        context.arc(radius + x, height - radius + y, radius, Float64.getPI() * 1.0 / 2.0, Float64.getPI())
         context.closePath()
         invalidate(context, paint)
     }
@@ -693,13 +693,13 @@ public class CanvasImpl <: ICanvas {
 
     public func rotateInternal(context: CanvasRenderingContext2D, x: Float64, y: Float64, angle: Float64): Unit {
         context.translate(x, y)
-        context.rotate(angle / 360.0 * Float64.PI * 2.0)
+        context.rotate(angle / 360.0 * Float64.getPI() * 2.0)
         context.translate(-x, -y)
     }
 
     public func rotateInternal(context: OffscreenCanvasRenderingContext2D, x: Float64, y: Float64, angle: Float64): Unit {
         context.translate(x, y)
-        context.rotate(angle / 360.0 * Float64.PI * 2.0)
+        context.rotate(angle / 360.0 * Float64.getPI() * 2.0)
         context.translate(-x, -y)
     }
 

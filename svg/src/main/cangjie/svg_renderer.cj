@@ -1834,7 +1834,7 @@ public class SVGRenderer {
         }
         rx = abs(rx)
         ry = abs(ry)
-        let angleRad: Float64 = Float64(Int64(angle) % 360) * Float64.PI / 180.0
+        let angleRad: Float64 = Float64(Int64(angle) % 360) * Float64.getPI() / 180.0
         let cosAngle: Float64 = cos(angleRad)
         let sinAngle: Float64 = sin(angleRad)
         let dx2: Float64 = Float64(lastX - x) / 2.0
@@ -1877,7 +1877,7 @@ public class SVGRenderer {
         let vy: Float64 = (-y1 - cy1) / ry
         var p: Float64
         var n: Float64
-        let TWO_PI: Float64 = Float64.PI * 2.0
+        let TWO_PI: Float64 = Float64.getPI() * 2.0
         n = sqrt((ux * ux) + (uy * uy))
         p = ux
         sign = if (uy < 0.0) {
@@ -1921,7 +1921,7 @@ public class SVGRenderer {
 
     private static func checkedArcCos(val: Float64): Float64 {
         return if (val < -1.0) {
-            Float64.PI
+            Float64.getPI()
         } else {
             if (val > 1.0) {
                 0.0
@@ -1932,7 +1932,7 @@ public class SVGRenderer {
     }
 
     private static func arcToBeziers(angleStart: Float64, angleExtent: Float64): ArrayList<Float64> {
-        let numSegments: Float64 = ceil(abs(angleExtent) * 2.0 / Float64.PI)
+        let numSegments: Float64 = ceil(abs(angleExtent) * 2.0 / Float64.getPI())
         let angleIncrement: Float64 = angleExtent / numSegments
         let controlLength: Float64 = 4.0 / 3.0 * sin(angleIncrement / 2.0) / (1.0 + cos(angleIncrement / 2.0))
         let coords: ArrayList<Float64> = ArrayList<Float64>(Int64(numSegments) * 6)
@@ -2534,13 +2534,13 @@ public class SVGRenderer {
         if (x > 0.0) {
             return atan(y / x)
         } else if (x < 0.0 && y >= 0.0) {
-            return atan(y / x) + Float64.PI
+            return atan(y / x) + Float64.getPI()
         } else if (x < 0.0 && y < 0.0) {
-            return atan(y / x) - Float64.PI
+            return atan(y / x) - Float64.getPI()
         } else if (x == 0.0 && y > 0.0) {
-            return Float64.PI / 2.0
+            return Float64.getPI() / 2.0
         } else if (x == 0.0 && y < 0.0) {
-            return -Float64.PI / 2.0
+            return -Float64.getPI() / 2.0
         } else {
             return 0.0
         }
@@ -2553,7 +2553,7 @@ public class SVGRenderer {
         if (marker.orient != 0.0) {
             if (marker.orient.isNaN()) {
                 if (pos.dx != 0.0 || pos.dy != 0.0) {
-                    angle = atan2(pos.dy, pos.dx) * 180.0 / Float64.PI
+                    angle = atan2(pos.dy, pos.dx) * 180.0 / Float64.getPI()
                 }
             } else {
                 angle = marker.orient

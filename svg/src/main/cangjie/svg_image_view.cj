@@ -7,8 +7,6 @@ package svg
 import ohos.state_macro_manage.*
 import ohos.concurrency.*
 
-var pxTovp: Float64 = 0.0
-
 @Component
 public class SVGImageView {
     @State
@@ -16,8 +14,7 @@ public class SVGImageView {
     private var settings: RenderingContextSettings = RenderingContextSettings(antialias: true)
     private let context2D: CanvasRenderingContext2D = CanvasRenderingContext2D(this.settings)
 
-    @Builder
-    func setSvgCanvas(b: Bool) {
+    func build() {
         Canvas(this.context2D).width(100.percent).height(100.percent).onReady(
             {
                 =>
@@ -27,19 +24,6 @@ public class SVGImageView {
                 this.model.doRender(this.model.context, areaChanged: true)
             }
         )
-    }
-
-    func build() {
-        Column {
-            setSvgCanvas(pxTovpRes())
-        }
-    }
-
-    func pxTovpRes(): Bool {
-        let optValue: Float64 = 55.0
-        let res = px2vp(optValue.px).getOrThrow().value
-        pxTovp = optValue / res
-        return true
     }
 }
 
@@ -159,27 +143,23 @@ public class SVGImageViewModel {
             this.context = context
         }
         let value: String = String.fromUtf8(data)
-        let fut = SVG.getFromString(
-            value,
-            {
-                v: SVG => svg = v
-            }
-        )
-        fut.get()
+        // 直接使用同步方法，避免异步线程问题
+        let svgBase = SVGBase.getFromString(value)
+        let svgInstance = SVG(svgBase)
         let setTings: RenderingContextSettings = RenderingContextSettings(antialias: true)
-        let svgRootElement = svg().getRootElement()
+        let svgRootElement = svgInstance.getRootElement()
         // 根据屏幕分辨率适配
         let targetCompWidth: Float64 = this.viewWidth * px2vp(1.px).getOrThrow().value
         let targetCompHeight: Float64 = this.viewHeight * px2vp(1.px).getOrThrow().value
-        let offContext: OffscreenCanvasRenderingContext2D = OffscreenCanvasRenderingContext2D(targetCompWidth, targetCompHeight, setTings, LengthMetricsUnit.DEFAULT)
+        let offContext: OffscreenCanvasRenderingContext2D = OffscreenCanvasRenderingContext2D(targetCompWidth, targetCompHeight, setTings, unit: LengthMetricsUnit.DEFAULT)
         var minScale: Float64 = 1.0
         let scaleW: Float64 = targetCompWidth / svgRootElement.viewBox.width * 1.0
         let scaleH: Float64 = targetCompHeight / svgRootElement.viewBox.height * 1.0
         minScale = min(scaleW, scaleH) // 选择较小的缩放比例以确保完全适应目标尺寸
         offContext.setTransform(minScale, 0.0, 0.0, minScale, 0.0, 0.0)
         canvas.setOffScreenCanvas(offContext)
-        render = SVGRenderer(canvas, svg().base.renderDPI, svg().base.externalFileResolver)
-        render().renderDocument(svg().base, renderOptions, context).get()
+        render = SVGRenderer(canvas, svgInstance.base.renderDPI, svgInstance.base.externalFileResolver)
+        render().renderDocument(svgInstance.base, renderOptions, context).get()
         let minShowWidth: Float64 = svgRootElement.viewBox.width * px2vp(1.px).getOrThrow().value * minScale
         let minShowHeight: Float64 = svgRootElement.viewBox.height * px2vp(1.px).getOrThrow().value * minScale
         let pix = offContext.getPixelMap(0.0, 0.0, minShowWidth, minShowHeight)
