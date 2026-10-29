@@ -7,6 +7,6 @@
         xmlns:xlink="http://www.w3.org/1999/xlink">
     <a xlink:href="https://developer.mozilla.org/zh-CN/docs/SVG" target="_blank">
         <rect height="30" width="120" y="0" x="0" rx="15" />
-        <text stroke="red" text-anchor="middle" y="21" x="60">SVG on MDN</text>
+        <text fill="red" text-anchor="middle" y="21" x="60">SVG on MDN</text>
     </a>
 </svg>

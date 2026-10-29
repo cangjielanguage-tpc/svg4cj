@@ -51,7 +51,9 @@ public open class TextScanner {
 
     public func nextFloat(): Float64 {
         let val: Float64 = this.numberParser.parseNumber(this.input, this.position, this.inputLength)
-        this.position = this.numberParser.getEndPos()
+        if (!val.isNaN()) {
+            this.position = this.numberParser.getEndPos()
+        }
         return val
     }
 
@@ -67,11 +69,21 @@ public open class TextScanner {
     func possibleNextFloat(): Float64 {
         skipCommaWhitespace()
         let val: Float64 = this.numberParser.parseNumber(this.input, this.position, this.inputLength)
-        this.position = this.numberParser.getEndPos()
+        if (!val.isNaN()) {
+            this.position = this.numberParser.getEndPos()
+        }
         return val
     }
 
-    func checkedNextFloat(lastRead: Any): Float64 {
+    func checkedNextFloat(lastRead: Float64): Float64 {
+        if (lastRead.isNaN()) {
+            return Float64.NaN
+        }
+        skipCommaWhitespace()
+        return nextFloat()
+    }
+
+    func checkedNextFloat(_: Bool): Float64 {
         skipCommaWhitespace()
         return nextFloat()
     }
@@ -130,7 +142,7 @@ public open class TextScanner {
             let len: Int64 = str.size
             let found: Bool = (position <= (inputLength - len) && input[position..position + len] == (str))
             if (found) {
-                this.position++
+                this.position += len
             }
             return found
         }
@@ -268,13 +280,12 @@ public open class TextScanner {
             return ""
         }
         byte = advanceChar()
-        while (byte != b' ' && byte != endQuote) {
+        while (byte != endQuote) {
+            if (this.position >= this.inputLength) {
+                this.position = start
+                return ""
+            }
             byte = advanceChar()
-        }
-
-        if (byte == b' ') {
-            this.position = start
-            return ""
         }
         this.position++
         return this.input[(start + 1)..(this.position - 1)]

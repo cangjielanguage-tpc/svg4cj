@@ -128,7 +128,7 @@ class NumberParser {
                             if (expVal > TOO_BIG_I) {
                                 return Float64.NaN
                             }
-                            expVal = expVal * 10 + Int64(byte)
+                            expVal = expVal * 10 + Int64(byte) - Int64(b'0')
                             pos++
                         } else {
                             break

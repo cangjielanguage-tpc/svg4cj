@@ -8,13 +8,13 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class RenderUse {
+class Render404 {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false
 
     protected override func aboutToAppear() {
-        this.model.setImageRawfile("Svg_use.svg", globalAbilityContext)
+        this.model.setImageRawfile("404.svg", globalAbilityContext)
     }
 
     func build() {

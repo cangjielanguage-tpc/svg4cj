@@ -193,10 +193,84 @@ public class Style {
         return def
     }
 
+    func clone(): Style {
+        let copy = Style()
+        copy.specifiedFlags = this.specifiedFlags
+        copy.fill = this.fill
+        copy.fillRule = this.fillRule
+        copy.fillOpacity = this.fillOpacity
+        copy.stroke = this.stroke
+        copy.strokeOpacity = this.strokeOpacity
+        copy.strokeWidth = this.strokeWidth
+        copy.strokeLineCap = this.strokeLineCap
+        copy.strokeLineJoin = this.strokeLineJoin
+        copy.strokeMiterLimit = this.strokeMiterLimit
+        copy.strokeDashArray = ArrayList<SVGLength>()
+        for (value in this.strokeDashArray) {
+            copy.strokeDashArray.add(value)
+        }
+        copy.strokeDashOffset = this.strokeDashOffset
+        copy.opacity = this.opacity
+        copy.color = this.color
+        copy.fontFamily = ArrayList<String>()
+        for (value in this.fontFamily) {
+            copy.fontFamily.add(value)
+        }
+        copy.fontSize = this.fontSize
+        copy.fontWeight = this.fontWeight
+        copy.fontStyle = this.fontStyle
+        copy.fontStretch = this.fontStretch
+        copy.textDecoration = this.textDecoration
+        copy.direction = this.direction
+        copy.textAnchor = this.textAnchor
+        copy.overflow = this.overflow
+        copy.clip = this.clip
+        copy.markerStart = this.markerStart
+        copy.markerMid = this.markerMid
+        copy.markerEnd = this.markerEnd
+        copy.display = this.display
+        copy.visibility = this.visibility
+        copy.stopColor = this.stopColor
+        copy.stopOpacity = this.stopOpacity
+        copy.clipPath = this.clipPath
+        copy.clipRule = this.clipRule
+        copy.mask = this.mask
+        copy.solidColor = this.solidColor
+        copy.solidOpacity = this.solidOpacity
+        copy.viewportFill = this.viewportFill
+        copy.viewportFillOpacity = this.viewportFillOpacity
+        copy.vectorEffect = this.vectorEffect
+        copy.imageRendering = this.imageRendering
+        copy.isolation = this.isolation
+        copy.mixBlendMode = this.mixBlendMode
+        copy.fontKerning = this.fontKerning
+        copy.fontVariantLigatures = cloneFontFeatureSettings(this.fontVariantLigatures)
+        copy.fontVariantPosition = cloneFontFeatureSettings(this.fontVariantPosition)
+        copy.fontVariantCaps = cloneFontFeatureSettings(this.fontVariantCaps)
+        copy.fontVariantNumeric = cloneFontFeatureSettings(this.fontVariantNumeric)
+        copy.fontVariantEastAsian = cloneFontFeatureSettings(this.fontVariantEastAsian)
+        copy.fontFeatureSettings = cloneFontFeatureSettings(this.fontFeatureSettings)
+        copy.fontVariationSettings = cloneFontFeatureSettings(this.fontVariationSettings)
+        copy.writingMode = this.writingMode
+        copy.glyphOrientationVertical = this.glyphOrientationVertical
+        copy.textOrientation = this.textOrientation
+        copy.letterSpacing = this.letterSpacing
+        copy.wordSpacing = this.wordSpacing
+        return copy
+    }
+
+    private static func cloneFontFeatureSettings(value: ?CSSFontFeatureSettings): ?CSSFontFeatureSettings {
+        if (let Some(settings) <- value) {
+            return Some(CSSFontFeatureSettings(settings))
+        }
+        return None
+    }
+
     static func processStyleProperty(style: Style, localName: String, val: String): Unit {
         if (val.size != 0) {
             if (val != "inherit") {
-                match (localName) {
+                let normalizedName: String = localName.replace("-", "_")
+                match (normalizedName) {
                     case "fill" =>
                         style.fill = parsePaintSpecifier(val)
                         if (style.fill.isSome()) {
@@ -253,8 +327,12 @@ public class Style {
                         style.opacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_OPACITY
                     case "color" =>
-                        style.color = SVGParserImpl.parseColour(val)
-                        style.specifiedFlags |= SPECIFIED_COLOR
+                        try {
+                            style.color = SVGParserImpl.parseColour(val)
+                            style.specifiedFlags |= SPECIFIED_COLOR
+                        } catch (e: SVGParseException) {
+                            // Invalid CSS colors are ignored so the inherited/default color remains active.
+                        }
                     case "font" => parseFont(style, val)
                     case "font_family" =>
                         style.fontFamily = SVGParserImpl.parseFontFamily(val)
@@ -275,7 +353,7 @@ public class Style {
                         if (style.fontStyle.isSome()) {
                             style.specifiedFlags |= SPECIFIED_FONT_STYLE
                         }
-                    case "textdecoration" =>
+                    case "text_decoration" =>
                         style.textDecoration = parseTextDecoration(val)
                         if (style.textDecoration != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_DECORATION
@@ -286,7 +364,7 @@ public class Style {
                             style.specifiedFlags |= SPECIFIED_DIRECTION
                         }
 
-                    case "textanchor" =>
+                    case "text_anchor" =>
                         style.textAnchor = parseTextAnchor(val)
                         if (style.textAnchor != "") {
                             style.specifiedFlags |= SPECIFIED_TEXT_ANCHOR
@@ -315,9 +393,9 @@ public class Style {
                         style.markerEnd = parseFunctionalIRI(val)
                         style.specifiedFlags |= SPECIFIED_MARKER_END
 
-                    case "display" => if (val.indexOf('|').isNone() || SVGParserImpl.VALID_DISPLAY_VALUES.contains(
+                    case "display" => if (val.indexOf('|').isNone() && SVGParserImpl.VALID_DISPLAY_VALUES.contains(
                         '|' + val + '|')) {
-                        style.display = !(val == "")
+                        style.display = val != SVGParserImpl.NONE
                         style.specifiedFlags |= SPECIFIED_DISPLAY
                     }
 
@@ -375,7 +453,7 @@ public class Style {
                         style.solidOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_SOLID_OPACITY
 
-                    case "viewport-fill" =>
+                    case "viewport_fill" =>
                         if (val == SVGParserImpl.CURRENTCOLOR) {
                             style.viewportFill = CurrentColor.getInstance()
                         } else {
@@ -386,17 +464,17 @@ public class Style {
                         }
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL
 
-                    case "viewport-fill_opacity" =>
+                    case "viewport_fill_opacity" =>
                         style.viewportFillOpacity = parseOpacity(val)
                         style.specifiedFlags |= SPECIFIED_VIEWPORT_FILL_OPACITY
 
-                    case "vector-effect" =>
+                    case "vector_effect" =>
                         style.vectorEffect = parseVectorEffect(val)
                         if (style.vectorEffect != "") {
                             style.specifiedFlags |= SPECIFIED_VECTOR_EFFECT
                         }
 
-                    case "image-rendering" =>
+                    case "image_rendering" =>
                         style.imageRendering = parseRenderQuality(val)
                         if (style.imageRendering != "") {
                             style.specifiedFlags |= SPECIFIED_IMAGE_RENDERING
@@ -540,7 +618,7 @@ public class Style {
         var fontStyle: ?FontStyle = None
         var fontVariant: String = ""
         // Start by checking for the fixed size standard system font names (which we don't support)
-        if (!"|caption|icon|menu|message-box|small-caption|status-bar|".contains('|' + val + '|')) {
+        if ("|caption|icon|menu|message-box|small-caption|status-bar|".contains('|' + val + '|')) {
             return
         }
         // First part: style/variant/weight (opt - one or more)
@@ -740,6 +818,8 @@ public class Style {
         match (val) {
             case "none" => return Colour.TRANSPARENT
             case "currentColor" => return CurrentColor.getInstance()
+            case "context-fill" => return ContextPaint(true)
+            case "context-stroke" => return ContextPaint(false)
             case _ => try {
                 return SVGParserImpl.parseColour(val)
             } catch (var4: SVGParseException) {

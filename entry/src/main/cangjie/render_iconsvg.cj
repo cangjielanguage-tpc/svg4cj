@@ -8,13 +8,13 @@ import ohos.state_macro_manage.*
 
 @Entry
 @Component
-class RenderClipPath {
+class RenderIconsvg {
     var model: SVGImageViewModel = SVGImageViewModel()
     @State
     var flag: Bool = false
 
     protected override func aboutToAppear() {
-        this.model.setImageRawfile("Svg_clipPath.svg", globalAbilityContext)
+        this.model.setImageRawfile("iconsvg.svg", globalAbilityContext)
     }
 
     func build() {
